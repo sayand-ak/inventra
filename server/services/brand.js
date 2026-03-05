@@ -38,6 +38,8 @@ const deleteBrand = async (id) => {
 
 const filterBrands = async (filterData) => {
   const { name, type } = filterData;
+  console.log(filterData, name, type);
+  
   const whereClause = {};
   if (name) {
     whereClause.name = name;
@@ -45,7 +47,7 @@ const filterBrands = async (filterData) => {
   if (type) {
     whereClause.type = type;
   }
-  const brands = await Brand.find({ where: whereClause });
+  const brands = await Brand.find(whereClause);
   return brands;
 };
 
