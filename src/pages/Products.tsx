@@ -26,6 +26,7 @@ interface Product {
   openingStock: number;
   currentStock: number;
   description?: string;
+  flavour?: string;   
   createdAt?: string;
 }
 
@@ -48,6 +49,7 @@ const emptyForm = {
   count: "",
   openingStock: "",
   description: "",
+  flavour: "", 
 };
 
 /* ─── Helpers ────────────────────────────────────────────── */
@@ -157,6 +159,7 @@ export default function Products() {
       count: String(p.count ?? ""),
       openingStock: String(p.openingStock ?? ""),
       description: p.description ?? "",
+      flavour: p.flavour ?? "", 
     });
     setFormError("");
     setModal("edit");
@@ -182,6 +185,7 @@ export default function Products() {
         count: Number(form.count),
         openingStock: Number(form.openingStock),
         description: form.description || undefined,
+        flavour: form.flavour || undefined, 
         ...(form.price ? { price: Number(form.price) } : {}),
         ...(form.retailPrice ? { retailPrice: Number(form.retailPrice) } : {}),
         ...(form.quantityValue
@@ -213,6 +217,7 @@ export default function Products() {
         count: form.count ? Number(form.count) : undefined,
         openingStock: form.openingStock ? Number(form.openingStock) : undefined,
         description: form.description || undefined,
+        flavour: form.flavour || undefined,
         ...(form.price ? { price: Number(form.price) } : {}),
         ...(form.retailPrice ? { retailPrice: Number(form.retailPrice) } : {}),
       };
@@ -288,17 +293,27 @@ export default function Products() {
         </select>
       </div>
 
-      {isAdmin && (
-        <div className="form-group">
-          <label className="flabel">Price (₹) *</label>
-          <input className="finput" type="number" min="0" placeholder="0.00" value={f("price")} onChange={e => setF("price", e.target.value)} />
-        </div>
-      )}
+      <div className="form-group">
+        <label className="flabel">Flavour</label>
+        <input
+          className="finput"
+          placeholder="e.g. Orange, Chocolate"
+          value={f("flavour")}
+          onChange={e => setF("flavour", e.target.value)}
+        />
+      </div>
 
       <div className="form-group">
         <label className="flabel">Retail Price (₹)</label>
         <input className="finput" type="number" min="0" placeholder="0.00" value={f("retailPrice")} onChange={e => setF("retailPrice", e.target.value)} />
       </div>
+
+      {isAdmin && (
+        <div className="form-group">
+          <label className="flabel">Cost Price (₹) *</label>
+          <input className="finput" type="number" min="0" placeholder="0.00" value={f("price")} onChange={e => setF("price", e.target.value)} />
+        </div>
+      )}
 
       <div className="form-group">
         <label className="flabel">Quantity Value</label>
@@ -402,7 +417,7 @@ export default function Products() {
                 <tr>
                   <th>Product</th>
                   <th>Category</th>
-                  {isAdmin && <th>Price</th>}
+                  <th>Price</th>
                   <th>Quantity</th>
                   <th>Stock</th>
                   <th>Actions</th>
@@ -414,14 +429,14 @@ export default function Products() {
                     <tr key={i} className="skeleton-row">
                       <td><div className="sk" style={{ height: 14, width: "70%" }} /></td>
                       <td><div className="sk" style={{ height: 14, width: "50%" }} /></td>
-                      {isAdmin && <td><div className="sk" style={{ height: 14, width: "40%" }} /></td>}
+                      <td><div className="sk" style={{ height: 14, width: "40%" }} /></td>
                       <td><div className="sk" style={{ height: 14, width: "40%" }} /></td>
                       <td><div className="sk" style={{ height: 22, width: 60, borderRadius: 8 }} /></td>
                       <td><div className="sk" style={{ height: 30, width: 90, borderRadius: 8 }} /></td>
                     </tr>
                   ))
                 ) : products.length === 0 ? (
-                  <tr><td colSpan={isAdmin ? 6 : 5}>
+                  <tr><td colSpan={6}>
                     <div className="empty">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                       <h3>No products found</h3>
@@ -435,16 +450,27 @@ export default function Products() {
                     return (
                       <tr key={p._id}>
                         <td>
-                          <div className="prod-name" onClick={() => openView(p)}>{p.name}</div>
+                          <div className="prod-name" onClick={() => openView(p)}>
+                            <div className="product-name-wrap">
+                              <span className="product-name">{p.name}</span>
+                              {p.flavour && <span className="flavour-badge">{p.flavour}</span>}
+                            </div>
+                          </div>
                           <div className="prod-brand">{p.brand?.name ?? "—"}</div>
                         </td>
                         <td><span className="cat-badge">{p.category?.name ?? "—"}</span></td>
-                        {isAdmin && (
-                          <td>
-                            <div className="price-val">₹{p.price?.toLocaleString() ?? "—"}</div>
-                            {p.retailPrice && <div className="price-retail">Retail: ₹{p.retailPrice.toLocaleString()}</div>}
-                          </td>
-                        )}
+                        <td>
+                          {/* Retail price: visible to everyone, shown as primary */}
+                          {p.retailPrice != null ? (
+                            <div className="price-retail-primary">₹{p.retailPrice.toLocaleString()}</div>
+                          ) : (
+                            <div className="price-retail-primary price-empty">—</div>
+                          )}
+                          {/* Cost price: admin only, shown as secondary */}
+                          {isAdmin && p.price != null && (
+                            <div className="price-cost-secondary">Cost: ₹{p.price.toLocaleString()}</div>
+                          )}
+                        </td>
                         <td>
                           <span className="qty-val">
                             {p.quantity ? `${p.quantity.value} ${p.quantity.unit}` : "—"} × {p.count}
@@ -572,7 +598,10 @@ export default function Products() {
         <div className="overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
           <div className="modal">
             <div className="modal-header">
-              <span className="modal-title">{selected.name}</span>
+              <div className="modal-title-wrap">
+                <span className="modal-title">{selected.name}</span>
+                {selected.flavour && <span className="modal-flavour-badge">{selected.flavour}</span>}
+              </div>
               <button className="modal-close" onClick={closeModal}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div className="modal-body">
@@ -586,17 +615,19 @@ export default function Products() {
                   <span className="detail-val">{selected.category?.name ?? "—"}</span>
                 </div>
                 <hr className="detail-divider" />
+                <div className="detail-item">
+                  <span className="detail-label">Retail Price</span>
+                  <span className="detail-val" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                    {selected.retailPrice != null ? `₹${selected.retailPrice.toLocaleString()}` : "—"}
+                  </span>
+                </div>
                 {isAdmin && (
-                  <>
-                    <div className="detail-item">
-                      <span className="detail-label">Price</span>
-                      <span className="detail-val" style={{ fontFamily: "'JetBrains Mono', monospace" }}>₹{selected.price?.toLocaleString() ?? "—"}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">Retail Price</span>
-                      <span className="detail-val" style={{ fontFamily: "'JetBrains Mono', monospace" }}>₹{selected.retailPrice?.toLocaleString() ?? "—"}</span>
-                    </div>
-                  </>
+                  <div className="detail-item">
+                    <span className="detail-label">Cost Price <span className="admin-only-tag">Admin</span></span>
+                    <span className="detail-val" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                      {selected.price != null ? `₹${selected.price.toLocaleString()}` : "—"}
+                    </span>
+                  </div>
                 )}
                 <div className="detail-item">
                   <span className="detail-label">Quantity</span>
@@ -618,6 +649,12 @@ export default function Products() {
                     return <span className="detail-val" style={{ color: sc.color }}>{selected.currentStock} <span style={{ fontSize: 12, opacity: .7 }}>({sc.label})</span></span>;
                   })()}
                 </div>
+                {selected.flavour && (
+                  <div className="detail-item">
+                    <span className="detail-label">Flavour</span>
+                    <span className="detail-val">{selected.flavour}</span>
+                  </div>
+                )}
                 {selected.description && (
                   <div className="detail-item full">
                     <span className="detail-label">Description</span>

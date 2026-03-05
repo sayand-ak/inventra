@@ -18,6 +18,7 @@ export interface CreateProductDTO {
   count?: number;
   openingStock: number;
   description?: string;
+  flavour?: string
 }
 
 export interface UpdateProductDTO {
@@ -30,6 +31,7 @@ export interface UpdateProductDTO {
   count?: number;
   openingStock?: number;
   description?: string;
+  flavour?: string
 }
 
 export const createProduct = async (data: CreateProductDTO) => {
