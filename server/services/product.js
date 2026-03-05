@@ -14,7 +14,8 @@ const addProduct = async (productData, isShopKeeper) => {
     count,
     openingStock,
     retailPrice,
-    description
+    description,
+    flavour
   } = productData;  
 
   // Ensure brand & category exist
@@ -61,7 +62,8 @@ const addProduct = async (productData, isShopKeeper) => {
     count,
     openingStock,
     currentStock: openingStock,
-    description
+    description,
+    flavour: flavour || "none"
   });
 
   return product;
@@ -141,6 +143,7 @@ const updateProduct = async (id, updateData) => {
     brandId,
     categoryId,
     openingStock,
+    flavour,
     ...rest
   } = updateData;
 
@@ -165,6 +168,10 @@ const updateProduct = async (id, updateData) => {
   // Update name if provided
   if (name) {
     product.name = name.trim();
+  }
+
+  if (flavour !== undefined) {
+    product.flavour = flavour || "none";
   }
 
   // Handle opening stock change
@@ -195,7 +202,10 @@ const deleteProduct = async (id) => {
 
 const searchProducts = async (searchTerm) => {
   const products = await Product.find({
-    name: { $regex: searchTerm, $options: "i" },
+    $or: [
+      { name: { $regex: searchTerm, $options: "i" } },
+      { flavour: { $regex: searchTerm, $options: "i" } }
+    ],
     isDeleted: false
   })
     .populate("brand", "name")

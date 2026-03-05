@@ -15,6 +15,10 @@ const productSchema = new mongoose.Schema({
     ref: "Category",
     required: true,
   },
+  flavour: {
+    type: String,
+    default: 'none'
+  },
   price: {
     type: Number,
     required: true,
