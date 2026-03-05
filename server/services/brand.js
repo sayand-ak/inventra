@@ -25,7 +25,7 @@ const getBrandById = async (id) => {
 
 const updateBrand = async (id, updateData) => {
   const brand = await getBrandById(id);
-  await brand.update(updateData);
+  await brand.updateOne(updateData);
   return brand;
 };
 

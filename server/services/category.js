@@ -27,7 +27,7 @@ const getCategoryById = async (id) => {
 
 const updateCategory = async (id, updateData) => {
   const category = await getCategoryById(id);
-  await category.update(updateData);
+  await category.updateOne(updateData);
   return category;
 };
 
