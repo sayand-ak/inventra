@@ -649,14 +649,12 @@ tbody tr:hover {
 }
 
 .t-desc {
-  font-size: 12px;
-  color: var(--mt);
-  max-width: 260px;
+  display: inline-block;
+  max-width: 220px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .act-btns {
   display: flex;
   gap: 6px;
