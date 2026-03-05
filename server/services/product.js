@@ -41,17 +41,6 @@ const addProduct = async (productData, isShopKeeper) => {
     throw new AppError("Price is required", 400);
   }
 
-  // Prevent duplicate product
-  const duplicate = await Product.exists({
-    name: name.trim(),
-    brand: brandId,
-    category: categoryId
-  });
-
-  if (duplicate) {
-    throw new AppError("Product already exists", 409);
-  }
-
   const product = await Product.create({
     name: name.trim(),
     brand: brandId,
