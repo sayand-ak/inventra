@@ -189,7 +189,7 @@ const deleteProduct = async (id) => {
   await product.save();
 }
 
-const searchProducts = async (searchTerm) => {
+const searchProducts = async (searchTerm) => {  
   const products = await Product.find({
     $or: [
       { name: { $regex: searchTerm, $options: "i" } },

@@ -57,4 +57,13 @@ const deleteProduct = async (req, res, next) => {
   }
 };
 
-export default { addProduct, getProducts, getProductById, updateProduct, deleteProduct };
+const searchProduct = async (req, res, next) => {
+  try {    
+    const response = await productService.searchProducts(req.query.search);
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export default { addProduct, getProducts, getProductById, updateProduct, deleteProduct, searchProduct };
