@@ -1,69 +1,125 @@
-import productService from '../services/product.js';
+import productService from "../services/product.js";
+
+// ─────────────────────────────────────────────
+//  PRODUCT CRUD
+// ─────────────────────────────────────────────
 
 const addProduct = async (req, res, next) => {
   try {
-    const productData = req.body;
-    const isShopKeeper = req.isShopKeeper;
-    const newProduct = await productService.addProduct(productData, isShopKeeper);
-
-    res.status(201).json(newProduct);
-  } catch (error) {
-    next(error);
+    const product = await productService.addProduct(req.body, req.isShopKeeper);
+    res.status(201).json(product);
+  } catch (err) {
+    next(err);
   }
 };
 
 const getProducts = async (req, res, next) => {
   try {
-    const filters = req.query;
+    const filters = {
+      name: req.query.name,
+      brandId: req.query.brandId,
+      categoryId: req.query.categoryId,
+    };
     const pagination = {
       page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 10
+      limit: parseInt(req.query.limit) || 10,
     };
-    const products = await productService.getProducts(filters, pagination, req.isShopKeeper);
-    res.status(200).json(products);
-  } catch (error) {
-    next(error);
+    const result = await productService.getProducts(filters, pagination, req.isShopKeeper);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
   }
 };
 
 const getProductById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const product = await productService.getProductById(id, req.isShopKeeper);
+    const product = await productService.getProductById(req.params.id, req.isShopKeeper);
     res.status(200).json(product);
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 };
 
 const updateProduct = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const updateData = req.body;
-    const updatedProduct = await productService.updateProduct(id, updateData);
-    res.status(200).json(updatedProduct);
-  } catch (error) {
-    next(error);
+    const product = await productService.updateProduct(req.params.id, req.body);
+    res.status(200).json(product);
+  } catch (err) {
+    next(err);
   }
 };
 
 const deleteProduct = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    await productService.deleteProduct(id);
+    await productService.deleteProduct(req.params.id);
     res.status(204).send();
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 };
 
 const searchProduct = async (req, res, next) => {
-  try {    
-    const response = await productService.searchProducts(req.query.search);
-    res.status(200).json(response);
-  } catch (error) {
-    next(error);
+  try {
+    const products = await productService.searchProducts(
+      req.query.search,
+      req.isShopKeeper
+    );
+    res.status(200).json(products);
+  } catch (err) {
+    next(err);
   }
-}
+};
 
-export default { addProduct, getProducts, getProductById, updateProduct, deleteProduct, searchProduct };
+// ─────────────────────────────────────────────
+//  STOCK MANAGEMENT
+// ─────────────────────────────────────────────
+
+const addStock = async (req, res, next) => {
+  try {
+    const entry = await productService.addStock(
+      req.params.id,
+      req.body,
+      req.isShopKeeper
+    );
+    res.status(201).json(entry);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getStockHistory = async (req, res, next) => {
+  try {
+    const result = await productService.getStockHistory(
+      req.params.id,
+      req.isShopKeeper
+    );
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateStockEntry = async (req, res, next) => {
+  try {
+    const entry = await productService.updateStockEntry(
+      req.params.entryId,
+      req.body,
+      req.isShopKeeper
+    );
+    res.status(200).json(entry);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export default {
+  addProduct,
+  getProducts,
+  getProductById,
+  updateProduct,
+  deleteProduct,
+  searchProduct,
+  addStock,
+  getStockHistory,
+  updateStockEntry,
+};
