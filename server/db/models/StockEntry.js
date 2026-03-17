@@ -13,25 +13,18 @@ const stockEntrySchema = new mongoose.Schema(
     },
     count: {
       type: Number,
-      required: true,
-      min: [1, "Count must be at least 1"],
     },
     // Price at which this batch was purchased (wholesale/cost price)
     price: {
       type: Number,
-      required: true,
-      min: [0, "Price cannot be negative"],
     },
     // Retail price for this batch (optional override per batch)
     retailPrice: {
       type: Number,
-      min: [0, "Retail price cannot be negative"],
     },
     // Remaining units from this batch (starts = count, decrements on sale)
     remainingCount: {
       type: Number,
-      required: true,
-      min: [0, "Remaining count cannot be negative"],
     },
     note: {
       type: String,
