@@ -220,7 +220,7 @@ const getStockHistory = async (productId, isShopKeeper) => {
   const product = await Product.findOne({ _id: productId, isDeleted: false });
   if (!product) throw new AppError("Product not found", 404);
 
-  const projection = isShopKeeper ? { price: 0, retailPrice: 0 } : {};
+  const projection = isShopKeeper ? { price: 0 } : {};  // ← removed retailPrice: 0
 
   const entries = await StockEntry.find({ product: productId }, projection).sort({
     createdAt: -1,
@@ -273,9 +273,10 @@ const updateStockEntry = async (entryId, updateData, isShopKeeper) => {
 const enrichProduct = async (product, isShopKeeper) => {
   const base = product.toObject();
 
+  // Fetch all active batches — always include retailPrice, hide price for shopkeeper
   const activeBatches = await StockEntry.find(
     { product: product._id, remainingCount: { $gt: 0 } },
-    isShopKeeper ? { price: 0, retailPrice: 0 } : {}
+    isShopKeeper ? { price: 0 } : {}   // only exclude cost price, keep retailPrice
   ).sort({ createdAt: -1 });
 
   base.stockSummary = {
@@ -284,13 +285,21 @@ const enrichProduct = async (product, isShopKeeper) => {
     lastRestocked: activeBatches[0]?.createdAt ?? null,
   };
 
-  if (!isShopKeeper && activeBatches.length > 0) {
-    const prices = activeBatches.map((b) => b.price);
-    base.priceSummary = {
-      latestPrice: activeBatches[0].price,
-      latestRetailPrice: activeBatches[0].retailPrice ?? null,
-      priceRange: { min: Math.min(...prices), max: Math.max(...prices) },
-    };
+  if (activeBatches.length > 0) {
+    if (isShopKeeper) {
+      // Shopkeeper sees retail price only
+      base.priceSummary = {
+        latestRetailPrice: activeBatches[0].retailPrice ?? null,
+      };
+    } else {
+      // Admin sees everything
+      const prices = activeBatches.map((b) => b.price);
+      base.priceSummary = {
+        latestPrice: activeBatches[0].price,
+        latestRetailPrice: activeBatches[0].retailPrice ?? null,
+        priceRange: { min: Math.min(...prices), max: Math.max(...prices) },
+      };
+    }
   }
 
   return base;

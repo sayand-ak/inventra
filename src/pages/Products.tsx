@@ -81,9 +81,7 @@ export default function Products() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [filterBrand, setFilterBrand] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [modal, setModal] = useState<
-    "create" | "edit" | "delete" | "view" | "stock" | "stockHistory" | null
-  >(null);
+  const [modal, setModal] = useState<"create" | "edit" | "delete" | "view" | "stock" | "stockHistory" | null >(null);
   const [selected, setSelected] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState({ ...emptyProductForm });
   const [stockForm, setStockForm] = useState({ ...emptyStockForm });
@@ -164,7 +162,6 @@ export default function Products() {
   };
 
   const openDelete = (p: Product) => { setSelected(p); setModal("delete"); };
-
   const openView = (p: Product) => { setSelected(p); setModal("view"); };
 
   const openAddStock = (p: Product) => {
@@ -357,8 +354,6 @@ export default function Products() {
         <label className="flabel">Description</label>
         <textarea className="finput ftextarea" rows={3} placeholder="Optional description…" value={pf("description")} onChange={e => setPF("description", e.target.value)} />
       </div>
-
-      {/* Hint: price/stock live in stock batches */}
       <div className="form-group full">
         <div className="info-hint">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -381,10 +376,12 @@ export default function Products() {
           <input className="finput" type="number" min="0" placeholder="0.00" value={sf("price")} onChange={e => setSF("price", e.target.value)} />
         </div>
       )}
-      <div className="form-group">
-        <label className="flabel">Retail Price (₹)</label>
-        <input className="finput" type="number" min="0" placeholder="0.00" value={sf("retailPrice")} onChange={e => setSF("retailPrice", e.target.value)} />
-      </div>
+      {isAdmin && (
+        <div className="form-group">
+          <label className="flabel">Retail Price (₹)</label>
+          <input className="finput" type="number" min="0" placeholder="0.00" value={sf("retailPrice")} onChange={e => setSF("retailPrice", e.target.value)} />
+        </div>
+      )}
       <div className="form-group full">
         <label className="flabel">Note</label>
         <input className="finput" placeholder="e.g. Supplier: XYZ, Batch #42" value={sf("note")} onChange={e => setSF("note", e.target.value)} />
@@ -518,11 +515,13 @@ export default function Products() {
                           </td>
                           {/* Category */}
                           <td><span className="cat-badge">{p.category?.name ?? "—"}</span></td>
-                          {/* Price — reads from priceSummary */}
+                          {/* Price */}
                           <td>
+                            {/* Retail price — visible to everyone */}
                             {latestRetail != null
                               ? <div className="price-retail-primary">{fmt(latestRetail)}</div>
                               : <div className="price-retail-primary price-empty">—</div>}
+                            {/* Cost price — admin only */}
                             {isAdmin && latestPrice != null && (
                               <div className="price-cost-secondary">Cost: {fmt(latestPrice)}</div>
                             )}
@@ -654,7 +653,7 @@ export default function Products() {
               {!isAdmin && (
                 <div className="info-hint" style={{ marginTop: 12 }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  Cost price will be set by Admin after this batch is recorded.
+                  Cost price and retail price will be set by Admin after this batch is recorded.
                 </div>
               )}
               {formError && <p className="ferr" style={{ marginTop: 14 }}>{formError}</p>}
@@ -695,6 +694,16 @@ export default function Products() {
                   <span className="ssc-label">Total Batches</span>
                   <span className="ssc-val">{selected.stockSummary?.totalBatches ?? "—"}</span>
                 </div>
+
+                {/* Retail price chip — visible to everyone */}
+                {selected.priceSummary?.latestRetailPrice != null && (
+                  <div className="stock-summary-chip">
+                    <span className="ssc-label">Retail Price</span>
+                    <span className="ssc-val">{fmt(selected.priceSummary.latestRetailPrice)}</span>
+                  </div>
+                )}
+
+                {/* Cost price + range — admin only */}
                 {isAdmin && selected.priceSummary && (
                   <>
                     <div className="stock-summary-chip">
@@ -733,8 +742,10 @@ export default function Products() {
                         <th>Date</th>
                         <th>Count</th>
                         <th>Remaining</th>
+                        {/* Cost price column — admin only */}
                         {isAdmin && <th>Cost Price</th>}
-                        {isAdmin && <th>Retail Price</th>}
+                        {/* Retail price column — visible to everyone */}
+                        <th>Retail Price</th>
                         <th>Note</th>
                       </tr>
                     </thead>
@@ -752,8 +763,16 @@ export default function Products() {
                               {e.remainingCount}
                             </span>
                           </td>
-                          {isAdmin && <td className="price-cell">{e.price != null ? fmt(e.price) : <span className="price-unset">Not set</span>}</td>}
-                          {isAdmin && <td className="price-cell">{e.retailPrice != null ? fmt(e.retailPrice) : "—"}</td>}
+                          {/* Cost price — admin only */}
+                          {isAdmin && (
+                            <td className="price-cell">
+                              {e.price != null ? fmt(e.price) : <span className="price-unset">Not set</span>}
+                            </td>
+                          )}
+                          {/* Retail price — visible to everyone */}
+                          <td className="price-cell">
+                            {e.retailPrice != null ? fmt(e.retailPrice) : "—"}
+                          </td>
                           <td style={{ fontSize: 12, color: "#64748b" }}>{e.note || "—"}</td>
                         </tr>
                       ))}
@@ -835,7 +854,15 @@ export default function Products() {
                 )}
                 <hr className="detail-divider" />
 
-                {/* Price summary (admin) */}
+                {/* Retail price — visible to everyone */}
+                {selected.priceSummary?.latestRetailPrice != null && (
+                  <div className="detail-item">
+                    <span className="detail-label">Retail Price</span>
+                    <span className="detail-val mono">{fmt(selected.priceSummary.latestRetailPrice)}</span>
+                  </div>
+                )}
+
+                {/* Cost price + range — admin only */}
                 {isAdmin && selected.priceSummary && (
                   <>
                     <div className="detail-item">
@@ -845,12 +872,6 @@ export default function Products() {
                       </span>
                       <span className="detail-val mono">{fmt(selected.priceSummary.latestPrice)}</span>
                     </div>
-                    {selected.priceSummary.latestRetailPrice != null && (
-                      <div className="detail-item">
-                        <span className="detail-label">Latest Retail Price</span>
-                        <span className="detail-val mono">{fmt(selected.priceSummary.latestRetailPrice)}</span>
-                      </div>
-                    )}
                     {selected.priceSummary.priceRange.min !== selected.priceSummary.priceRange.max && (
                       <div className="detail-item full">
                         <span className="detail-label">Cost Price Range (active batches)</span>
@@ -859,9 +880,10 @@ export default function Products() {
                         </span>
                       </div>
                     )}
-                    <hr className="detail-divider" />
                   </>
                 )}
+
+                {(selected.priceSummary != null) && <hr className="detail-divider" />}
 
                 {selected.description && (
                   <div className="detail-item full">
