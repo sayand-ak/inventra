@@ -273,10 +273,16 @@ const updateStockEntry = async (entryId, updateData, isShopKeeper) => {
 const enrichProduct = async (product, isShopKeeper) => {
   const base = product.toObject();
 
-  // Fetch all active batches — always include retailPrice, hide price for shopkeeper
+  // Active batches for stock count
   const activeBatches = await StockEntry.find(
     { product: product._id, remainingCount: { $gt: 0 } },
-    isShopKeeper ? { price: 0 } : {}   // only exclude cost price, keep retailPrice
+    isShopKeeper ? { price: 0 } : {}
+  ).sort({ createdAt: -1 });
+
+  // Latest batch regardless of remaining — for price display even when out of stock
+  const latestBatch = await StockEntry.findOne(
+    { product: product._id },
+    isShopKeeper ? { price: 0 } : {}
   ).sort({ createdAt: -1 });
 
   base.stockSummary = {
@@ -285,18 +291,20 @@ const enrichProduct = async (product, isShopKeeper) => {
     lastRestocked: activeBatches[0]?.createdAt ?? null,
   };
 
-  if (activeBatches.length > 0) {
+  // Build priceSummary from latest batch (even if sold out)
+  if (latestBatch) {
     if (isShopKeeper) {
-      // Shopkeeper sees retail price only
       base.priceSummary = {
-        latestRetailPrice: activeBatches[0].retailPrice ?? null,
+        latestRetailPrice: latestBatch.retailPrice ?? null,
       };
     } else {
-      // Admin sees everything
-      const prices = activeBatches.map((b) => b.price);
+      const prices = activeBatches.length > 0
+        ? activeBatches.map((b) => b.price)
+        : [latestBatch.price];
+
       base.priceSummary = {
-        latestPrice: activeBatches[0].price,
-        latestRetailPrice: activeBatches[0].retailPrice ?? null,
+        latestPrice: latestBatch.price,
+        latestRetailPrice: latestBatch.retailPrice ?? null,
         priceRange: { min: Math.min(...prices), max: Math.max(...prices) },
       };
     }
