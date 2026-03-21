@@ -702,22 +702,6 @@ export default function Products() {
                     <span className="ssc-val">{fmt(selected.priceSummary.latestRetailPrice)}</span>
                   </div>
                 )}
-
-                {/* Cost price + range — admin only */}
-                {isAdmin && selected.priceSummary && (
-                  <>
-                    <div className="stock-summary-chip">
-                      <span className="ssc-label">Latest Cost</span>
-                      <span className="ssc-val">{fmt(selected.priceSummary.latestPrice)}</span>
-                    </div>
-                    <div className="stock-summary-chip">
-                      <span className="ssc-label">Price Range</span>
-                      <span className="ssc-val" style={{ fontSize: 12 }}>
-                        {fmt(selected.priceSummary.priceRange.min)} – {fmt(selected.priceSummary.priceRange.max)}
-                      </span>
-                    </div>
-                  </>
-                )}
               </div>
 
               {/* Entries table */}
