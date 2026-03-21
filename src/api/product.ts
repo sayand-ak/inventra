@@ -45,12 +45,29 @@ export interface StockEntry {
   count: number;
   remainingCount: number;
   note?: string;
+  stockDate: string;      // ← new
   createdAt: string;
   updatedAt: string;
-  // Admin only
   price?: number;
   retailPrice?: number;
 }
+
+export interface AddStockDTO {
+  count: number;
+  price?: number;
+  retailPrice?: number;
+  note?: string;
+  stockDate?: string;     // ← new: ISO date string, optional
+}
+
+export interface EditStockEntryDTO {
+  count?: number;
+  price?: number;
+  retailPrice?: number;
+  note?: string;
+  stockDate?: string;
+}
+
 
 export interface PaginatedProducts {
   products: Product[];
@@ -174,4 +191,25 @@ export const updateStockEntry = async (
     data
   );
   return response.data;
+};
+
+/** Edit an existing stock batch (count, price, retailPrice, note, stockDate). */
+export const editStockEntry = async (
+  productId: string,
+  entryId: string,
+  data: EditStockEntryDTO
+): Promise<StockEntry> => {
+  const response = await axiosInstance.put(
+    `/products/${productId}/stock/${entryId}`,
+    data
+  );
+  return response.data;
+};
+
+/** Delete a stock batch (admin only). */
+export const deleteStockEntry = async (
+  productId: string,
+  entryId: string
+): Promise<void> => {
+  await axiosInstance.delete(`/products/${productId}/stock/${entryId}`);
 };

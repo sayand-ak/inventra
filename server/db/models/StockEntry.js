@@ -29,6 +29,10 @@ const stockEntrySchema = new mongoose.Schema(
     note: {
       type: String,
     },
+    stockDate: {
+      type: Date,
+      default: Date.now,
+    },
   },
   { timestamps: true }
 );

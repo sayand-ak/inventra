@@ -8,9 +8,12 @@ import {
   searchProducts,
   addStock,
   getStockHistory,
+  editStockEntry,
+  deleteStockEntry,
   type CreateProductDTO,
   type UpdateProductDTO,
   type AddStockDTO,
+  type EditStockEntryDTO,
   type Product,
   type StockEntry,
   type Quantity,
@@ -43,6 +46,7 @@ const emptyStockForm = {
   price: "",
   retailPrice: "",
   note: "",
+  stockDate: "",
 };
 
 /* ─── Helpers ─────────────────────────────────────────── */
@@ -81,10 +85,18 @@ export default function Products() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [filterBrand, setFilterBrand] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [modal, setModal] = useState<"create" | "edit" | "delete" | "view" | "stock" | "stockHistory" | null >(null);
+  const [modal, setModal] = useState<"create" | "edit" | "delete" | "view" | "stock" | "stockHistory" | "editEntry" | "deleteEntry" | null>(null);
   const [selected, setSelected] = useState<Product | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<StockEntry | null>(null);
   const [productForm, setProductForm] = useState({ ...emptyProductForm });
   const [stockForm, setStockForm] = useState({ ...emptyStockForm });
+  const [entryForm, setEntryForm] = useState({
+    count: "",
+    price: "",
+    retailPrice: "",
+    note: "",
+    stockDate: "",
+  });
   const [formError, setFormError] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -185,7 +197,32 @@ export default function Products() {
     }
   };
 
-  const closeModal = () => { setModal(null); setSelected(null); setStockEntries([]); };
+  const openEditEntry = (entry: StockEntry) => {
+    setSelectedEntry(entry);
+    setEntryForm({
+      count: String(entry.count),
+      price: entry.price != null ? String(entry.price) : "",
+      retailPrice: entry.retailPrice != null ? String(entry.retailPrice) : "",
+      note: entry.note ?? "",
+      stockDate: entry.stockDate
+        ? new Date(entry.stockDate).toISOString().split("T")[0]
+        : new Date(entry.createdAt).toISOString().split("T")[0],
+    });
+    setFormError("");
+    setModal("editEntry");
+  };
+
+  const openDeleteEntry = (entry: StockEntry) => {
+    setSelectedEntry(entry);
+    setModal("deleteEntry");
+  };
+
+  const closeModal = () => {
+    setModal(null);
+    setSelected(null);
+    setSelectedEntry(null);
+    setStockEntries([]);
+  };
 
   /* ── create product ── */
   const handleCreate = async () => {
@@ -244,7 +281,7 @@ export default function Products() {
     }
   };
 
-  /* ── delete ── */
+  /* ── delete product ── */
   const handleDelete = async () => {
     if (!selected) return;
     setSubmitting(true);
@@ -276,6 +313,7 @@ export default function Products() {
       const dto: AddStockDTO = {
         count: Number(stockForm.count),
         note: stockForm.note || undefined,
+        stockDate: stockForm.stockDate || undefined,
         ...(stockForm.price ? { price: Number(stockForm.price) } : {}),
         ...(stockForm.retailPrice ? { retailPrice: Number(stockForm.retailPrice) } : {}),
       };
@@ -286,6 +324,57 @@ export default function Products() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setFormError(e?.response?.data?.message || e.message || "Failed to add stock");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /* ── edit stock entry ── */
+  const handleEditEntry = async () => {
+    if (!selected || !selectedEntry) return;
+    if (!entryForm.count || Number(entryForm.count) < 1) {
+      setFormError("Count must be at least 1.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const dto: EditStockEntryDTO = {
+        count: Number(entryForm.count),
+        note: entryForm.note || undefined,
+        stockDate: entryForm.stockDate || undefined,
+        ...(entryForm.price ? { price: Number(entryForm.price) } : {}),
+        ...(entryForm.retailPrice ? { retailPrice: Number(entryForm.retailPrice) } : {}),
+      };
+      await editStockEntry(selected._id, selectedEntry._id, dto);
+      showToast("Stock entry updated", "success");
+      const res = await getStockHistory(selected._id);
+      setStockEntries(res.entries);
+      load();
+      setSelectedEntry(null);
+      setFormError("");
+      setModal("stockHistory");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      setFormError(e?.response?.data?.message || e.message || "Failed to update entry");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /* ── delete stock entry ── */
+  const handleDeleteEntry = async () => {
+    if (!selected || !selectedEntry) return;
+    setSubmitting(true);
+    try {
+      await deleteStockEntry(selected._id, selectedEntry._id);
+      showToast("Stock entry deleted", "success");
+      const res = await getStockHistory(selected._id);
+      setStockEntries(res.entries);
+      load();
+      setSelectedEntry(null);
+      setModal("stockHistory");
+    } catch {
+      showToast("Failed to delete stock entry", "error");
     } finally {
       setSubmitting(false);
     }
@@ -315,7 +404,7 @@ export default function Products() {
     return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>;
   };
 
-  /* ── shared product form fields (create + edit) ── */
+  /* ── shared product form fields ── */
   const productFormFields = (
     <div className="form-grid">
       <div className="form-group full">
@@ -366,6 +455,15 @@ export default function Products() {
   /* ── stock batch form ── */
   const stockFormFields = (
     <div className="form-grid">
+      <div className="form-group full">
+        <label className="flabel">Stock Date</label>
+        <input
+          className="finput"
+          type="date"
+          value={sf("stockDate")}
+          onChange={e => setSF("stockDate", e.target.value)}
+        />
+      </div>
       <div className="form-group full">
         <label className="flabel">Count (units in this batch) *</label>
         <input className="finput" type="number" min="1" placeholder="e.g. 50" value={sf("count")} onChange={e => setSF("count", e.target.value)} />
@@ -430,7 +528,6 @@ export default function Products() {
 
         {/* Main */}
         <main className="main">
-          {/* Header */}
           <div className="ph">
             <div className="ph-left">
               <h1>Product <span>Catalog</span></h1>
@@ -442,7 +539,6 @@ export default function Products() {
             </button>
           </div>
 
-          {/* Toolbar */}
           <div className="toolbar">
             <div className="search-wrap">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -458,7 +554,6 @@ export default function Products() {
             </select>
           </div>
 
-          {/* Table */}
           <div className="table-wrap">
             <table>
               <thead>
@@ -501,7 +596,6 @@ export default function Products() {
                       const batches = p.stockSummary?.totalBatches ?? 0;
                       return (
                         <tr key={p._id}>
-                          {/* Product */}
                           <td>
                             <div className="prod-name" onClick={() => openView(p)}>
                               <div className="product-name-wrap">
@@ -513,15 +607,11 @@ export default function Products() {
                             </div>
                             <div className="prod-brand">{p.brand?.name ?? "—"}</div>
                           </td>
-                          {/* Category */}
                           <td><span className="cat-badge">{p.category?.name ?? "—"}</span></td>
-                          {/* Price */}
                           <td>
-                            {/* Retail price — visible to everyone */}
                             {latestRetail != null
                               ? <div className="price-retail-primary">{fmt(latestRetail)}</div>
                               : <div className="price-retail-primary price-empty">—</div>}
-                            {/* Cost price — admin only */}
                             {isAdmin && latestPrice != null && (
                               <div className="price-cost-secondary">Cost: {fmt(latestPrice)}</div>
                             )}
@@ -531,13 +621,11 @@ export default function Products() {
                               </div>
                             )}
                           </td>
-                          {/* Quantity */}
                           <td>
                             <span className="qty-val">
                               {p.quantity ? `${p.quantity.value} ${p.quantity.unit}` : "—"}
                             </span>
                           </td>
-                          {/* Stock */}
                           <td>
                             <span className="stock-badge" style={{ background: sc.bg, color: sc.color }}>
                               {stock} <span style={{ opacity: .6, fontWeight: 400, fontSize: 11 }}>{sc.label}</span>
@@ -546,7 +634,6 @@ export default function Products() {
                               <div className="batch-hint">{batches} batch{batches !== 1 ? "es" : ""}</div>
                             )}
                           </td>
-                          {/* Actions */}
                           <td>
                             <div className="act-btns">
                               <button className="act-btn view" title="View details" onClick={() => openView(p)}>
@@ -575,7 +662,6 @@ export default function Products() {
               </tbody>
             </table>
 
-            {/* Pagination */}
             {!loading && products.length > 0 && !searchDebounced && (
               <div className="pagination">
                 <span className="pag-info">Page {page} of {pages} · {total} total</span>
@@ -682,7 +768,6 @@ export default function Products() {
               <button className="modal-close" onClick={closeModal}><CloseIcon /></button>
             </div>
             <div className="modal-body">
-              {/* Summary row */}
               <div className="stock-summary-row">
                 <div className="stock-summary-chip">
                   <span className="ssc-label">Current Stock</span>
@@ -694,8 +779,6 @@ export default function Products() {
                   <span className="ssc-label">Total Batches</span>
                   <span className="ssc-val">{selected.stockSummary?.totalBatches ?? "—"}</span>
                 </div>
-
-                {/* Retail price chip — visible to everyone */}
                 {selected.priceSummary?.latestRetailPrice != null && (
                   <div className="stock-summary-chip">
                     <span className="ssc-label">Retail Price</span>
@@ -704,7 +787,6 @@ export default function Products() {
                 )}
               </div>
 
-              {/* Entries table */}
               {stockLoading ? (
                 <div className="stock-loading">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -723,21 +805,22 @@ export default function Products() {
                     <thead>
                       <tr>
                         <th>#</th>
-                        <th>Date</th>
+                        <th>Stock Date</th>
                         <th>Count</th>
                         <th>Remaining</th>
-                        {/* Cost price column — admin only */}
                         {isAdmin && <th>Cost Price</th>}
-                        {/* Retail price column — visible to everyone */}
                         <th>Retail Price</th>
                         <th>Note</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {stockEntries.map((e, idx) => (
                         <tr key={e._id}>
                           <td className="batch-num">#{stockEntries.length - idx}</td>
-                          <td style={{ fontSize: 12, color: "#94a3b8" }}>{fmtDate(e.createdAt)}</td>
+                          <td style={{ fontSize: 12, color: "#94a3b8" }}>
+                            {fmtDate(e.stockDate || e.createdAt)}
+                          </td>
                           <td><span className="batch-count">{e.count}</span></td>
                           <td>
                             <span
@@ -747,17 +830,27 @@ export default function Products() {
                               {e.remainingCount}
                             </span>
                           </td>
-                          {/* Cost price — admin only */}
                           {isAdmin && (
                             <td className="price-cell">
                               {e.price != null ? fmt(e.price) : <span className="price-unset">Not set</span>}
                             </td>
                           )}
-                          {/* Retail price — visible to everyone */}
                           <td className="price-cell">
                             {e.retailPrice != null ? fmt(e.retailPrice) : "—"}
                           </td>
                           <td style={{ fontSize: 12, color: "#64748b" }}>{e.note || "—"}</td>
+                          <td>
+                            <div className="act-btns">
+                              <button className="act-btn edit" title="Edit batch" onClick={() => openEditEntry(e)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              </button>
+                              {isAdmin && (
+                                <button className="act-btn del" title="Delete batch" onClick={() => openDeleteEntry(e)}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                </button>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -769,6 +862,129 @@ export default function Products() {
               <button className="mbtn cancel" onClick={closeModal}>Close</button>
               <button className="mbtn primary" onClick={() => { closeModal(); openAddStock(selected); }}>
                 + Add New Batch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════
+          EDIT STOCK ENTRY MODAL
+      ══════════════════════════════════════ */}
+      {modal === "editEntry" && selectedEntry && selected && (
+        <div className="overlay" onClick={e => e.target === e.currentTarget && setModal("stockHistory")}>
+          <div className="modal modal-sm">
+            <div className="modal-header">
+              <div>
+                <span className="modal-title">Edit Stock Batch</span>
+                <div className="modal-subtitle">
+                  #{stockEntries.length - stockEntries.findIndex(e => e._id === selectedEntry._id)} · {selected.name}
+                </div>
+              </div>
+              <button className="modal-close" onClick={() => { setModal("stockHistory"); setFormError(""); }}><CloseIcon /></button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid">
+                <div className="form-group full">
+                  <label className="flabel">Stock Date</label>
+                  <input
+                    className="finput"
+                    type="date"
+                    value={entryForm.stockDate}
+                    onChange={e => setEntryForm(prev => ({ ...prev, stockDate: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group full">
+                  <label className="flabel">Count *</label>
+                  <input
+                    className="finput"
+                    type="number"
+                    min="1"
+                    value={entryForm.count}
+                    onChange={e => setEntryForm(prev => ({ ...prev, count: e.target.value }))}
+                  />
+                </div>
+                {isAdmin && (
+                  <div className="form-group">
+                    <label className="flabel">Cost Price (₹)</label>
+                    <input
+                      className="finput"
+                      type="number"
+                      min="0"
+                      placeholder="0.00"
+                      value={entryForm.price}
+                      onChange={e => setEntryForm(prev => ({ ...prev, price: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {isAdmin && (
+                  <div className="form-group">
+                    <label className="flabel">Retail Price (₹)</label>
+                    <input
+                      className="finput"
+                      type="number"
+                      min="0"
+                      placeholder="0.00"
+                      value={entryForm.retailPrice}
+                      onChange={e => setEntryForm(prev => ({ ...prev, retailPrice: e.target.value }))}
+                    />
+                  </div>
+                )}
+                <div className="form-group full">
+                  <label className="flabel">Note</label>
+                  <input
+                    className="finput"
+                    placeholder="e.g. Supplier: XYZ, Batch #42"
+                    value={entryForm.note}
+                    onChange={e => setEntryForm(prev => ({ ...prev, note: e.target.value }))}
+                  />
+                </div>
+              </div>
+              {selectedEntry.remainingCount < selectedEntry.count && (
+                <div className="info-hint" style={{ marginTop: 12 }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span>
+                    <strong style={{ color: "#c7d2fe" }}>{selectedEntry.count - selectedEntry.remainingCount} units</strong> already sold from this batch. Reducing count below that will set remaining to 0.
+                  </span>
+                </div>
+              )}
+              {formError && <p className="ferr" style={{ marginTop: 14 }}>{formError}</p>}
+            </div>
+            <div className="modal-footer">
+              <button className="mbtn cancel" onClick={() => { setModal("stockHistory"); setFormError(""); }}>Cancel</button>
+              <button className="mbtn primary" disabled={submitting} onClick={handleEditEntry}>
+                {submitting ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════
+          DELETE STOCK ENTRY MODAL
+      ══════════════════════════════════════ */}
+      {modal === "deleteEntry" && selectedEntry && selected && (
+        <div className="overlay" onClick={e => e.target === e.currentTarget && setModal("stockHistory")}>
+          <div className="modal modal-sm">
+            <div className="modal-header">
+              <span className="modal-title">Delete Stock Batch</span>
+              <button className="modal-close" onClick={() => setModal("stockHistory")}><CloseIcon /></button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7 }}>
+                Are you sure you want to delete this batch of{" "}
+                <strong style={{ color: "#f1f5f9" }}>{selectedEntry.count} units</strong> added on{" "}
+                <strong style={{ color: "#f1f5f9" }}>{fmtDate(selectedEntry.stockDate || selectedEntry.createdAt)}</strong>?
+              </p>
+              <div className="info-hint" style={{ marginTop: 14 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Only the remaining <strong style={{ color: "#c7d2fe" }}>{selectedEntry.remainingCount} unsold units</strong> will be deducted from current stock.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="mbtn cancel" onClick={() => setModal("stockHistory")}>Cancel</button>
+              <button className="mbtn danger" disabled={submitting} onClick={handleDeleteEntry}>
+                {submitting ? "Deleting…" : "Delete Batch"}
               </button>
             </div>
           </div>
@@ -814,7 +1030,6 @@ export default function Products() {
                 )}
                 <hr className="detail-divider" />
 
-                {/* Stock summary */}
                 <div className="detail-item">
                   <span className="detail-label">Current Stock</span>
                   <span className="detail-val" style={{ color: stockColor(selected.currentStock ?? 0).color }}>
@@ -838,15 +1053,12 @@ export default function Products() {
                 )}
                 <hr className="detail-divider" />
 
-                {/* Retail price — visible to everyone */}
                 {selected.priceSummary?.latestRetailPrice != null && (
                   <div className="detail-item">
                     <span className="detail-label">Retail Price</span>
                     <span className="detail-val mono">{fmt(selected.priceSummary.latestRetailPrice)}</span>
                   </div>
                 )}
-
-                {/* Cost price + range — admin only */}
                 {isAdmin && selected.priceSummary && (
                   <>
                     <div className="detail-item">
@@ -866,8 +1078,7 @@ export default function Products() {
                     )}
                   </>
                 )}
-
-                {(selected.priceSummary != null) && <hr className="detail-divider" />}
+                {selected.priceSummary != null && <hr className="detail-divider" />}
 
                 {selected.description && (
                   <div className="detail-item full">
@@ -899,7 +1110,7 @@ export default function Products() {
       )}
 
       {/* ══════════════════════════════════════
-          DELETE MODAL
+          DELETE PRODUCT MODAL
       ══════════════════════════════════════ */}
       {modal === "delete" && selected && (
         <div className="overlay" onClick={e => e.target === e.currentTarget && closeModal()}>

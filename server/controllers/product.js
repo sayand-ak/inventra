@@ -1,9 +1,5 @@
 import productService from "../services/product.js";
 
-// ─────────────────────────────────────────────
-//  PRODUCT CRUD
-// ─────────────────────────────────────────────
-
 const addProduct = async (req, res, next) => {
   try {
     const product = await productService.addProduct(req.body, req.isShopKeeper);
@@ -24,7 +20,11 @@ const getProducts = async (req, res, next) => {
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 10,
     };
-    const result = await productService.getProducts(filters, pagination, req.isShopKeeper);
+    const result = await productService.getProducts(
+      filters,
+      pagination,
+      req.isShopKeeper,
+    );
     res.status(200).json(result);
   } catch (err) {
     next(err);
@@ -33,7 +33,10 @@ const getProducts = async (req, res, next) => {
 
 const getProductById = async (req, res, next) => {
   try {
-    const product = await productService.getProductById(req.params.id, req.isShopKeeper);
+    const product = await productService.getProductById(
+      req.params.id,
+      req.isShopKeeper,
+    );
     res.status(200).json(product);
   } catch (err) {
     next(err);
@@ -62,7 +65,7 @@ const searchProduct = async (req, res, next) => {
   try {
     const products = await productService.searchProducts(
       req.query.search,
-      req.isShopKeeper
+      req.isShopKeeper,
     );
     res.status(200).json(products);
   } catch (err) {
@@ -70,16 +73,12 @@ const searchProduct = async (req, res, next) => {
   }
 };
 
-// ─────────────────────────────────────────────
-//  STOCK MANAGEMENT
-// ─────────────────────────────────────────────
-
 const addStock = async (req, res, next) => {
   try {
     const entry = await productService.addStock(
       req.params.id,
       req.body,
-      req.isShopKeeper
+      req.isShopKeeper,
     );
     res.status(201).json(entry);
   } catch (err) {
@@ -91,7 +90,7 @@ const getStockHistory = async (req, res, next) => {
   try {
     const result = await productService.getStockHistory(
       req.params.id,
-      req.isShopKeeper
+      req.isShopKeeper,
     );
     res.status(200).json(result);
   } catch (err) {
@@ -99,14 +98,28 @@ const getStockHistory = async (req, res, next) => {
   }
 };
 
-const updateStockEntry = async (req, res, next) => {
+const editStockEntry = async (req, res, next) => {
   try {
-    const entry = await productService.updateStockEntry(
+    const entry = await productService.editStockEntry(
+      req.params.id,
       req.params.entryId,
       req.body,
-      req.isShopKeeper
+      req.isShopKeeper,
     );
     res.status(200).json(entry);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteStockEntry = async (req, res, next) => {
+  try {
+    await productService.deleteStockEntry(
+      req.params.id,
+      req.params.entryId,
+      req.isShopKeeper,
+    );
+    res.status(204).send();
   } catch (err) {
     next(err);
   }
@@ -121,5 +134,6 @@ export default {
   searchProduct,
   addStock,
   getStockHistory,
-  updateStockEntry,
+  editStockEntry,
+  deleteStockEntry,
 };

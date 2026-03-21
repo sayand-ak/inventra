@@ -9,17 +9,12 @@ import { AppError } from "../utils/CustomError.js";
 //  PRODUCT CRUD
 // ─────────────────────────────────────────────
 
-/**
- * Create a product (identity only).
- * The first stock batch is added via addStock() after creation.
- * ShopKeepers cannot create products — only Admins can.
- */
 const addProduct = async (productData, isShopKeeper) => {
-  if (isShopKeeper) {
+  if (isShopKeeper)
     throw new AppError("ShopKeepers cannot create products", 403);
-  }
 
-  const { name, brandId, categoryId, quantity, description, flavour } = productData;
+  const { name, brandId, categoryId, quantity, description, flavour } =
+    productData;
 
   const [brandExists, categoryExists] = await Promise.all([
     Brand.exists({ _id: brandId }),
@@ -47,15 +42,12 @@ const getProducts = async (filters, pagination, isShopKeeper) => {
   const { page = 1, limit = 10 } = pagination;
 
   const query = { isDeleted: false };
-
   if (name) query.name = { $regex: name, $options: "i" };
-
   if (brandId) {
     if (!mongoose.Types.ObjectId.isValid(brandId))
       throw new AppError("Invalid brandId", 400);
     query.brand = brandId;
   }
-
   if (categoryId) {
     if (!mongoose.Types.ObjectId.isValid(categoryId))
       throw new AppError("Invalid categoryId", 400);
@@ -71,18 +63,11 @@ const getProducts = async (filters, pagination, isShopKeeper) => {
     Product.countDocuments(query),
   ]);
 
-  // Attach live stock summary to each product.
-  // For admins we also include a per-batch price breakdown.
   const enriched = await Promise.all(
-    products.map((p) => enrichProduct(p, isShopKeeper))
+    products.map((p) => enrichProduct(p, isShopKeeper)),
   );
 
-  return {
-    products: enriched,
-    total,
-    page,
-    pages: Math.ceil(total / limit),
-  };
+  return { products: enriched, total, page, pages: Math.ceil(total / limit) };
 };
 
 const getProductById = async (id, isShopKeeper) => {
@@ -94,7 +79,6 @@ const getProductById = async (id, isShopKeeper) => {
     .populate("category", "name");
 
   if (!product) throw new AppError("Product not found", 404);
-
   return enrichProduct(product, isShopKeeper);
 };
 
@@ -102,20 +86,19 @@ const updateProduct = async (id, updateData) => {
   const product = await Product.findOne({ _id: id, isDeleted: false });
   if (!product) throw new AppError("Product not found", 404);
 
-  const { name, brandId, categoryId, flavour, quantity, description } = updateData;
+  const { name, brandId, categoryId, flavour, quantity, description } =
+    updateData;
 
   if (brandId) {
     if (!(await Brand.exists({ _id: brandId })))
       throw new AppError("Brand not found", 404);
     product.brand = brandId;
   }
-
   if (categoryId) {
     if (!(await Category.exists({ _id: categoryId })))
       throw new AppError("Category not found", 404);
     product.category = categoryId;
   }
-
   if (name) product.name = name.trim();
   if (flavour !== undefined) product.flavour = flavour || "none";
   if (description !== undefined) product.description = description;
@@ -128,7 +111,6 @@ const updateProduct = async (id, updateData) => {
 const deleteProduct = async (id) => {
   const product = await Product.findOne({ _id: id, isDeleted: false });
   if (!product) throw new AppError("Product not found", 404);
-
   product.isDeleted = true;
   await product.save();
 };
@@ -151,11 +133,6 @@ const searchProducts = async (searchTerm, isShopKeeper) => {
 //  STOCK MANAGEMENT
 // ─────────────────────────────────────────────
 
-/**
- * Add a new stock batch for a product.
- * Each call creates a new StockEntry row with its own price.
- * ShopKeepers cannot set price — Admins must set it.
- */
 const addStock = async (productId, stockData, isShopKeeper) => {
   if (!mongoose.Types.ObjectId.isValid(productId))
     throw new AppError("Invalid product ID", 400);
@@ -163,17 +140,14 @@ const addStock = async (productId, stockData, isShopKeeper) => {
   const product = await Product.findOne({ _id: productId, isDeleted: false });
   if (!product) throw new AppError("Product not found", 404);
 
-  const { count, price, retailPrice, note } = stockData;
+  const { count, price, retailPrice, note, stockDate } = stockData;
 
   if (!count || count < 1) throw new AppError("Count must be at least 1", 400);
-
   if (isShopKeeper && price !== undefined)
     throw new AppError("ShopKeepers cannot set price", 403);
-
   if (!isShopKeeper && price === undefined)
     throw new AppError("Price is required", 400);
 
-  // Run entry creation + stock counter update in a session for atomicity
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -183,20 +157,21 @@ const addStock = async (productId, stockData, isShopKeeper) => {
         {
           product: productId,
           count,
-          price: isShopKeeper ? 0 : price, // ShopKeeper batches get price=0 until admin sets it
+          price: isShopKeeper ? 0 : price,
           retailPrice,
           remainingCount: count,
           note,
+          // Use provided date or fall back to now
+          stockDate: stockDate ? new Date(stockDate) : new Date(),
         },
       ],
-      { session }
+      { session },
     );
 
-    // Increment denormalised counter on the product
     await Product.findByIdAndUpdate(
       productId,
       { $inc: { currentStock: count } },
-      { session }
+      { session },
     );
 
     await session.commitTransaction();
@@ -209,10 +184,6 @@ const addStock = async (productId, stockData, isShopKeeper) => {
   }
 };
 
-/**
- * Get full stock history for a product.
- * Admins see price per batch; ShopKeepers do not.
- */
 const getStockHistory = async (productId, isShopKeeper) => {
   if (!mongoose.Types.ObjectId.isValid(productId))
     throw new AppError("Invalid product ID", 400);
@@ -220,87 +191,144 @@ const getStockHistory = async (productId, isShopKeeper) => {
   const product = await Product.findOne({ _id: productId, isDeleted: false });
   if (!product) throw new AppError("Product not found", 404);
 
-  const projection = isShopKeeper ? { price: 0 } : {};  // ← removed retailPrice: 0
+  const projection = isShopKeeper ? { price: 0 } : {};
 
-  const entries = await StockEntry.find({ product: productId }, projection).sort({
-    createdAt: -1,
-  });
+  const entries = await StockEntry.find(
+    { product: productId },
+    projection,
+  ).sort({ stockDate: -1, createdAt: -1 });
 
   return { product, entries };
 };
 
 /**
- * Update price/retailPrice on a specific stock entry (Admin only).
- * Useful when a ShopKeeper added stock without a price.
+ * Edit a stock entry — price, retailPrice, note, count, stockDate.
+ * Adjusts product.currentStock if count changes.
+ * ShopKeepers cannot edit price.
  */
-const updateStockEntry = async (entryId, updateData, isShopKeeper) => {
-  if (isShopKeeper)
-    throw new AppError("ShopKeepers cannot update stock entries", 403);
-
+const editStockEntry = async (productId, entryId, updateData, isShopKeeper) => {
+  if (!mongoose.Types.ObjectId.isValid(productId))
+    throw new AppError("Invalid product ID", 400);
   if (!mongoose.Types.ObjectId.isValid(entryId))
     throw new AppError("Invalid stock entry ID", 400);
 
-  const entry = await StockEntry.findById(entryId);
+  const entry = await StockEntry.findOne({ _id: entryId, product: productId });
   if (!entry) throw new AppError("Stock entry not found", 404);
 
-  const { price, retailPrice, note } = updateData;
+  if (isShopKeeper && updateData.price !== undefined)
+    throw new AppError("ShopKeepers cannot update cost price", 403);
 
-  if (price !== undefined) entry.price = price;
-  if (retailPrice !== undefined) entry.retailPrice = retailPrice;
-  if (note !== undefined) entry.note = note;
+  const { price, retailPrice, note, stockDate, count } = updateData;
 
-  await entry.save();
-  return entry;
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // If count changed, adjust currentStock and remainingCount proportionally
+    if (count !== undefined && count !== entry.count) {
+      if (count < 1) throw new AppError("Count must be at least 1", 400);
+
+      const soldUnits = entry.count - entry.remainingCount; // units already consumed
+      const newRemaining = Math.max(0, count - soldUnits);
+      const stockDelta = newRemaining - entry.remainingCount; // change in available stock
+
+      entry.count = count;
+      entry.remainingCount = newRemaining;
+
+      await Product.findByIdAndUpdate(
+        productId,
+        { $inc: { currentStock: stockDelta } },
+        { session },
+      );
+    }
+
+    if (price !== undefined) entry.price = price;
+    if (retailPrice !== undefined) entry.retailPrice = retailPrice;
+    if (note !== undefined) entry.note = note;
+    if (stockDate !== undefined) entry.stockDate = new Date(stockDate);
+
+    await entry.save({ session });
+    await session.commitTransaction();
+    return entry;
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
+};
+
+/**
+ * Delete a stock entry.
+ * Decrements currentStock by the entry's remainingCount (already-sold units stay gone).
+ * Admin only.
+ */
+const deleteStockEntry = async (productId, entryId, isShopKeeper) => {
+  if (isShopKeeper)
+    throw new AppError("ShopKeepers cannot delete stock entries", 403);
+  if (!mongoose.Types.ObjectId.isValid(productId))
+    throw new AppError("Invalid product ID", 400);
+  if (!mongoose.Types.ObjectId.isValid(entryId))
+    throw new AppError("Invalid stock entry ID", 400);
+
+  const entry = await StockEntry.findOne({ _id: entryId, product: productId });
+  if (!entry) throw new AppError("Stock entry not found", 404);
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Only deduct the remaining (unsold) units from the live stock counter
+    await Product.findByIdAndUpdate(
+      productId,
+      { $inc: { currentStock: -entry.remainingCount } },
+      { session },
+    );
+
+    await StockEntry.deleteOne({ _id: entryId }, { session });
+    await session.commitTransaction();
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
 };
 
 // ─────────────────────────────────────────────
 //  INTERNAL HELPERS
 // ─────────────────────────────────────────────
 
-/**
- * Attach a stock summary (and optionally price info) to a product object.
- *
- * stockSummary included for all users:
- *   - currentStock  (from denormalised field — fast)
- *   - totalBatches
- *   - lastRestocked (date of most recent batch)
- *
- * priceSummary included for Admins only:
- *   - latestPrice   (price of the newest batch)
- *   - latestRetailPrice
- *   - priceRange    { min, max } across all active batches
- */
 const enrichProduct = async (product, isShopKeeper) => {
   const base = product.toObject();
 
-  // Active batches for stock count
   const activeBatches = await StockEntry.find(
     { product: product._id, remainingCount: { $gt: 0 } },
-    isShopKeeper ? { price: 0 } : {}
-  ).sort({ createdAt: -1 });
+    isShopKeeper ? { price: 0 } : {},
+  ).sort({ stockDate: -1, createdAt: -1 });
 
-  // Latest batch regardless of remaining — for price display even when out of stock
   const latestBatch = await StockEntry.findOne(
     { product: product._id },
-    isShopKeeper ? { price: 0 } : {}
-  ).sort({ createdAt: -1 });
+    isShopKeeper ? { price: 0 } : {},
+  ).sort({ stockDate: -1, createdAt: -1 });
 
   base.stockSummary = {
     currentStock: product.currentStock,
     totalBatches: activeBatches.length,
-    lastRestocked: activeBatches[0]?.createdAt ?? null,
+    lastRestocked:
+      activeBatches[0]?.stockDate ?? activeBatches[0]?.createdAt ?? null,
   };
 
-  // Build priceSummary from latest batch (even if sold out)
   if (latestBatch) {
     if (isShopKeeper) {
       base.priceSummary = {
         latestRetailPrice: latestBatch.retailPrice ?? null,
       };
     } else {
-      const prices = activeBatches.length > 0
-        ? activeBatches.map((b) => b.price)
-        : [latestBatch.price];
+      const prices =
+        activeBatches.length > 0
+          ? activeBatches.map((b) => b.price)
+          : [latestBatch.price];
 
       base.priceSummary = {
         latestPrice: latestBatch.price,
@@ -314,15 +342,14 @@ const enrichProduct = async (product, isShopKeeper) => {
 };
 
 export default {
-  // Product CRUD
   addProduct,
   getProducts,
   getProductById,
   updateProduct,
   deleteProduct,
   searchProducts,
-  // Stock management
   addStock,
   getStockHistory,
-  updateStockEntry,
+  editStockEntry,
+  deleteStockEntry,
 };
