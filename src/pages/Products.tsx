@@ -490,7 +490,7 @@ export default function Products() {
           <input className="finput" type="number" min="0" placeholder="0.00" value={sf("price")} onChange={e => setSF("price", e.target.value)} />
         </div>
       )}
-      {isAdmin && (
+      {(
         <div className="form-group">
           <label className="flabel">Retail Price (₹)</label>
           <input className="finput" type="number" min="0" placeholder="0.00" value={sf("retailPrice")} onChange={e => setSF("retailPrice", e.target.value)} />
