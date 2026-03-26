@@ -945,7 +945,7 @@ export default function Products() {
                     />
                   </div>
                 )}
-                {isAdmin && (
+                {(
                   <div className="form-group">
                     <label className="flabel">Retail Price (₹)</label>
                     <input
