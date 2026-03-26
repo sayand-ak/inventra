@@ -218,23 +218,45 @@ const editStockEntry = async (productId, entryId, updateData, isShopKeeper) => {
   if (isShopKeeper && updateData.price !== undefined)
     throw new AppError("ShopKeepers cannot update cost price", 403);
 
-  const { price, retailPrice, note, stockDate, count } = updateData;
+  const { price, retailPrice, note, stockDate, count, remainingCount } = updateData;
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // If count changed, adjust currentStock and remainingCount proportionally
-    if (count !== undefined && count !== entry.count) {
-      if (count < 1) throw new AppError("Count must be at least 1", 400);
+    // ── Resolve new count ──────────────────────────────────────
+    if (count !== undefined && count < 0)
+      throw new AppError("Count cannot be negative", 400);
 
-      const soldUnits = entry.count - entry.remainingCount; // units already consumed
-      const newRemaining = Math.max(0, count - soldUnits);
-      const stockDelta = newRemaining - entry.remainingCount; // change in available stock
+    const newCount = count !== undefined ? count : entry.count;
 
-      entry.count = count;
-      entry.remainingCount = newRemaining;
+    // ── Resolve new remainingCount ─────────────────────────────
+    let newRemaining;
 
+    if (remainingCount !== undefined) {
+      // remainingCount can be 0 (fully sold out) but cannot exceed total count
+      if (remainingCount < 0 || remainingCount > newCount)
+        throw new AppError(
+          `remainingCount must be between 0 and ${newCount}`,
+          400,
+        );
+      newRemaining = remainingCount;
+    } else if (count !== undefined && count !== entry.count) {
+      // Only count changed — adjust remaining proportionally
+      const soldUnits = entry.count - entry.remainingCount;
+      newRemaining = Math.max(0, newCount - soldUnits);
+    } else {
+      // Nothing affecting stock changed
+      newRemaining = entry.remainingCount;
+    }
+
+    // ── Apply stock delta to product ───────────────────────────
+    const stockDelta = newRemaining - entry.remainingCount;
+
+    if (count !== undefined) entry.count = newCount;
+    entry.remainingCount = newRemaining;
+
+    if (stockDelta !== 0) {
       await Product.findByIdAndUpdate(
         productId,
         { $inc: { currentStock: stockDelta } },
@@ -242,6 +264,7 @@ const editStockEntry = async (productId, entryId, updateData, isShopKeeper) => {
       );
     }
 
+    // ── Scalar field updates ───────────────────────────────────
     if (price !== undefined) entry.price = price;
     if (retailPrice !== undefined) entry.retailPrice = retailPrice;
     if (note !== undefined) entry.note = note;

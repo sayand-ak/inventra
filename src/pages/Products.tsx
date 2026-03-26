@@ -92,6 +92,7 @@ export default function Products() {
   const [stockForm, setStockForm] = useState({ ...emptyStockForm });
   const [entryForm, setEntryForm] = useState({
     count: "",
+    remainingCount: "",
     price: "",
     retailPrice: "",
     note: "",
@@ -201,6 +202,7 @@ export default function Products() {
     setSelectedEntry(entry);
     setEntryForm({
       count: String(entry.count),
+      remainingCount: String(entry.remainingCount),
       price: entry.price != null ? String(entry.price) : "",
       retailPrice: entry.retailPrice != null ? String(entry.retailPrice) : "",
       note: entry.note ?? "",
@@ -332,14 +334,28 @@ export default function Products() {
   /* ── edit stock entry ── */
   const handleEditEntry = async () => {
     if (!selected || !selectedEntry) return;
-    if (!entryForm.count || Number(entryForm.count) < 1) {
-      setFormError("Count must be at least 1.");
+
+    const countVal = Number(entryForm.count);
+    const remainingVal = Number(entryForm.remainingCount);
+
+    if (entryForm.count === "" || countVal < 0) {
+      setFormError("Count cannot be negative.");
       return;
     }
+    if (entryForm.remainingCount === "" || remainingVal < 0) {
+      setFormError("Remaining count cannot be negative.");
+      return;
+    }
+    if (remainingVal > countVal) {
+      setFormError("Remaining count cannot exceed total count.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const dto: EditStockEntryDTO = {
-        count: Number(entryForm.count),
+        count: countVal,
+        remainingCount: remainingVal,
         note: entryForm.note || undefined,
         stockDate: entryForm.stockDate || undefined,
         ...(entryForm.price ? { price: Number(entryForm.price) } : {}),
@@ -894,14 +910,26 @@ export default function Products() {
                     onChange={e => setEntryForm(prev => ({ ...prev, stockDate: e.target.value }))}
                   />
                 </div>
-                <div className="form-group full">
+                <div className="form-group">
                   <label className="flabel">Count *</label>
                   <input
                     className="finput"
                     type="number"
-                    min="1"
+                    min="0"
                     value={entryForm.count}
                     onChange={e => setEntryForm(prev => ({ ...prev, count: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="flabel">Remaining Count *</label>
+                  <input
+                    className="finput"
+                    type="number"
+                    min="0"
+                    max={entryForm.count}
+                    placeholder={`0 – ${entryForm.count}`}
+                    value={entryForm.remainingCount}
+                    onChange={e => setEntryForm(prev => ({ ...prev, remainingCount: e.target.value }))}
                   />
                 </div>
                 {isAdmin && (
@@ -940,11 +968,19 @@ export default function Products() {
                   />
                 </div>
               </div>
-              {selectedEntry.remainingCount < selectedEntry.count && (
+              {Number(entryForm.remainingCount) === 0 && (
                 <div className="info-hint" style={{ marginTop: 12 }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   <span>
-                    <strong style={{ color: "#c7d2fe" }}>{selectedEntry.count - selectedEntry.remainingCount} units</strong> already sold from this batch. Reducing count below that will set remaining to 0.
+                    Remaining count is <strong style={{ color: "#ef4444" }}>0</strong> — this batch will be marked as fully sold out.
+                  </span>
+                </div>
+              )}
+              {entryForm.remainingCount !== "" && entryForm.count !== "" && Number(entryForm.remainingCount) > Number(entryForm.count) && (
+                <div className="info-hint" style={{ marginTop: 12 }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span style={{ color: "#ef4444" }}>
+                    Remaining count cannot exceed total count.
                   </span>
                 </div>
               )}

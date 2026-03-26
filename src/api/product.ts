@@ -62,6 +62,7 @@ export interface AddStockDTO {
 
 export interface EditStockEntryDTO {
   count?: number;
+  remainingCount?: number
   price?: number;
   retailPrice?: number;
   note?: string;
