@@ -10,8 +10,6 @@ import { AppError } from "../utils/CustomError.js";
 // ─────────────────────────────────────────────
 
 const addProduct = async (productData, isShopKeeper) => {
-  if (isShopKeeper)
-    throw new AppError("ShopKeepers cannot create products", 403);
 
   const { name, brandId, categoryId, quantity, description, flavour } =
     productData;
