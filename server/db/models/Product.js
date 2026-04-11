@@ -29,6 +29,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "none",
     },
+    images: [
+      {
+        url: { type: String, required: true },
+        publicId: { type: String, required: true },
+      },
+    ],
     // Package size (e.g. 2 kg, 500 ml) — doesn't change per batch
     quantity: {
       value: {

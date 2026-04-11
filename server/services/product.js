@@ -4,15 +4,20 @@ import StockEntry from "../db/models/StockEntry.js";
 import Brand from "../db/models/Brand.js";
 import Category from "../db/models/Category.js";
 import { AppError } from "../utils/CustomError.js";
+import { uploadImagesToCloudinary } from "../utils/imageUpload.js";
+import cloudinary from "../utils/cloudinary.js";
 
 // ─────────────────────────────────────────────
 //  PRODUCT CRUD
 // ─────────────────────────────────────────────
 
-const addProduct = async (productData, isShopKeeper) => {
-
+const addProduct = async (productData, files, isShopKeeper) => {
   const { name, brandId, categoryId, quantity, description, flavour } =
     productData;
+
+  if (files && files.length > 4) {
+    throw new AppError("Maximum 4 images allowed", 400);
+  }
 
   const [brandExists, categoryExists] = await Promise.all([
     Brand.exists({ _id: brandId }),
@@ -22,6 +27,9 @@ const addProduct = async (productData, isShopKeeper) => {
   if (!brandExists) throw new AppError("Brand not found", 404);
   if (!categoryExists) throw new AppError("Category not found", 404);
 
+  // Upload images
+  const uploadedImages = await uploadImagesToCloudinary(files);
+
   const product = await Product.create({
     name: name.trim(),
     brand: brandId,
@@ -30,6 +38,7 @@ const addProduct = async (productData, isShopKeeper) => {
     description,
     flavour: flavour || "none",
     currentStock: 0,
+    images: uploadedImages,
   });
 
   return product;
@@ -80,12 +89,19 @@ const getProductById = async (id, isShopKeeper) => {
   return enrichProduct(product, isShopKeeper);
 };
 
-const updateProduct = async (id, updateData) => {
+const updateProduct = async (id, updateData, files) => {
   const product = await Product.findOne({ _id: id, isDeleted: false });
   if (!product) throw new AppError("Product not found", 404);
 
-  const { name, brandId, categoryId, flavour, quantity, description } =
-    updateData;
+  const {
+    name,
+    brandId,
+    categoryId,
+    flavour,
+    quantity,
+    description,
+    existingImages = [],
+  } = updateData;
 
   if (brandId) {
     if (!(await Brand.exists({ _id: brandId })))
@@ -101,6 +117,41 @@ const updateProduct = async (id, updateData) => {
   if (flavour !== undefined) product.flavour = flavour || "none";
   if (description !== undefined) product.description = description;
   if (quantity !== undefined) product.quantity = quantity;
+
+  let parsedExistingImages = [];
+
+  if (typeof existingImages === "string") {
+    // handle form-data stringified JSON
+    parsedExistingImages = JSON.parse(existingImages);
+  } else {
+    parsedExistingImages = existingImages;
+  }
+
+  // Upload new images
+  const uploadedImages = await uploadImagesToCloudinary(files);
+
+  const finalImages = [...parsedExistingImages, ...uploadedImages];
+
+  if (finalImages.length > 4) {
+    throw new AppError("Maximum 4 images allowed", 400);
+  }
+
+  // DELETE removed images from Cloudinary
+  const removedImages = product.images.filter(
+    (img) =>
+      !parsedExistingImages.some(
+        (keep) => keep.publicId === img.publicId
+      )
+  );
+
+  await Promise.all(
+    removedImages.map((img) =>
+      cloudinary.uploader.destroy(img.publicId)
+    )
+  );
+
+  // Update product images
+  product.images = finalImages;
 
   await product.save();
   return product;

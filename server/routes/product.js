@@ -1,17 +1,18 @@
 import express from "express";
 import productController from "../controllers/product.js";
+import upload from "../middlewares/multer.js";
 
 const router = express.Router();
 
 router
   .route("/")
-  .post(productController.addProduct)
+  .post(upload.array("images", 4), productController.addProduct)
   .get(productController.getProducts);
 router.get("/search", productController.searchProduct);
 router
   .route("/:id")
   .get(productController.getProductById)
-  .put(productController.updateProduct)
+  .put(upload.array("images", 4), productController.updateProduct)
   .delete(productController.deleteProduct);
 
 router
