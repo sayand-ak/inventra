@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { addCategory, getCategories, updateCategory, deleteCategory } from "../api/category";
 
-import Sidebar   from "../components/SideBar";
+import Sidebar from "../components/Sidebar";
 import PageHeader from "../components/PageHeader";
 import Modal     from "../components/Modal";
 import Toast from "../components/Toast";

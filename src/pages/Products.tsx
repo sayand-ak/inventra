@@ -17,7 +17,7 @@ import {
 import { getAllBrands, type Brand } from "../api/brand";
 import { getCategories } from "../api/category";
 
-import Sidebar from "../components/SideBar";
+import Sidebar from "../components/Sidebar";
 import PageHeader from "../components/PageHeader";
 import Modal from "../components/Modal";
 import Toast from "../components/Toast";

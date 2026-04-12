@@ -4,7 +4,7 @@ import {
   type Brand, type CreateBrandDTO, type UpdateBrandDTO,
 } from "../api/brand";
 
-import Sidebar   from "../components/SideBar";
+import Sidebar from "../components/Sidebar";
 import PageHeader from "../components/PageHeader";
 import Modal     from "../components/Modal";
 import Toast from "../components/Toast";
