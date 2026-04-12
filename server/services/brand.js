@@ -38,7 +38,6 @@ const deleteBrand = async (id) => {
 
 const filterBrands = async (filterData) => {
   const { name, type } = filterData;
-  console.log(filterData, name, type);
   
   const whereClause = {};
   if (name) {

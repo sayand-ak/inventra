@@ -97,6 +97,7 @@ export interface CreateProductDTO {
   quantity?: Quantity;
   description?: string;
   flavour?: string;
+  images?: string[];
 }
 
 export interface UpdateProductDTO {
@@ -106,6 +107,7 @@ export interface UpdateProductDTO {
   quantity?: Quantity;
   description?: string;
   flavour?: string;
+  images?: string[];
 }
 
 /** Admin must supply price. ShopKeeper omits it (admin fills it in later via updateStockEntry). */
@@ -126,11 +128,26 @@ export interface UpdateStockEntryDTO {
 //  PRODUCT CRUD
 // ─────────────────────────────────────────────
 
-export const createProduct = async (data: CreateProductDTO): Promise<Product> => {
-  const response = await axiosInstance.post("/products", data);
+// In your product API file, update these functions:
+
+export const createProduct = async (data: FormData): Promise<Product> => {
+  const response = await axiosInstance.post("/products", data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return response.data;
 };
 
+export const updateProduct = async (
+  id: string,
+  data: FormData
+): Promise<Product> => {
+  const response = await axiosInstance.put(`/products/${id}`, data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+};
+
+// Keep other functions the same
 export const getProducts = async (filters: ProductFilters): Promise<PaginatedProducts> => {
   const response = await axiosInstance.get("/products", { params: filters });
   return response.data;
@@ -145,14 +162,6 @@ export const searchProducts = async (search: string): Promise<Product[]> => {
 
 export const getProductById = async (id: string): Promise<Product> => {
   const response = await axiosInstance.get(`/products/${id}`);
-  return response.data;
-};
-
-export const updateProduct = async (
-  id: string,
-  data: UpdateProductDTO
-): Promise<Product> => {
-  const response = await axiosInstance.put(`/products/${id}`, data);
   return response.data;
 };
 

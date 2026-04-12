@@ -1,9 +1,9 @@
 export const errorHandler = (err, req, res, next) => {
   if(process.env.NODE_ENV === "development"){
     if (err?.originalError) {
-      console.log(err.originalError);
+      console.log("Original Error:", err.originalError);
     } else {
-      console.log(err.stack); 
+      console.log("Error:", err.stack);
     }
   }
 

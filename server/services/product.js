@@ -12,8 +12,13 @@ import cloudinary from "../utils/cloudinary.js";
 // ─────────────────────────────────────────────
 
 const addProduct = async (productData, files, isShopKeeper) => {
-  const { name, brandId, categoryId, quantity, description, flavour } =
-    productData;
+  const { name, brandId, categoryId, description, flavour } = productData;
+  let { quantity } = productData;
+
+  // quantity arrives as a JSON string via multipart/form-data
+  if (quantity && typeof quantity === "string") {
+    quantity = JSON.parse(quantity);
+  }
 
   if (files && files.length > 4) {
     throw new AppError("Maximum 4 images allowed", 400);
@@ -89,7 +94,7 @@ const getProductById = async (id, isShopKeeper) => {
   return enrichProduct(product, isShopKeeper);
 };
 
-const updateProduct = async (id, updateData, files) => {
+const updateProduct = async (id, updateData, files) => {  
   const product = await Product.findOne({ _id: id, isDeleted: false });
   if (!product) throw new AppError("Product not found", 404);
 
@@ -116,7 +121,9 @@ const updateProduct = async (id, updateData, files) => {
   if (name) product.name = name.trim();
   if (flavour !== undefined) product.flavour = flavour || "none";
   if (description !== undefined) product.description = description;
-  if (quantity !== undefined) product.quantity = quantity;
+  if (quantity !== undefined) {
+    product.quantity = typeof quantity === "string" ? JSON.parse(quantity) : quantity;
+  }
 
   let parsedExistingImages = [];
 

@@ -48,9 +48,7 @@ const Home = () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (sum: number, p: any) => sum + (p.quantity.value ?? p.openingStock ?? 0),
           0
-        );
-        console.log(totalStock);
-        
+        );        
 
         setStats({
           totalProducts: Array.isArray(productsData) ? productsData.length : (productsData.total || products.length),

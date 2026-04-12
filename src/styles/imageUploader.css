@@ -1,0 +1,287 @@
+/* ═══════════════════════════════════════════════════════════
+   ProductImageUploader  ·  product-image-uploader.css
+═══════════════════════════════════════════════════════════ */
+
+/* ── Root ─────────────────────────────────────────────────── */
+.piu-root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Label row ───────────────────────────────────────────── */
+.piu-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.piu-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.piu-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: #475569;
+  background: rgba(255,255,255,0.04);
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* ── Grid ────────────────────────────────────────────────── */
+.piu-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+/* ── Slot base ───────────────────────────────────────────── */
+.piu-slot {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+/* ── Filled slot ─────────────────────────────────────────── */
+.piu-slot--filled {
+  cursor: grab;
+  border: 1.5px solid rgba(255,255,255,0.08);
+  background: #0f1623;
+}
+.piu-slot--filled:active { cursor: grabbing; }
+
+.piu-slot--filled .piu-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+/* ── Overlay (shown on hover) ────────────────────────────── */
+.piu-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 14, 23, 0.72);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  backdrop-filter: blur(2px);
+}
+.piu-slot--filled:hover .piu-overlay { opacity: 1; }
+.piu-slot--filled:hover .piu-img     { transform: scale(1.04); }
+
+.piu-drag-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+.piu-drag-hint svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+.piu-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+  padding: 0;
+}
+.piu-remove-btn svg { width: 13px; height: 13px; }
+.piu-remove-btn:hover { background: rgba(239,68,68,0.35); transform: scale(1.1); }
+
+/* ── Primary badge ───────────────────────────────────────── */
+.piu-primary-badge {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0f172a;
+  background: #3b82f6;
+  padding: 2px 7px;
+  border-radius: 20px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ── Drag states ─────────────────────────────────────────── */
+.piu-slot--dragging {
+  opacity: 0.4;
+  transform: scale(0.95);
+  border-color: rgba(59,130,246,0.4) !important;
+}
+.piu-slot--drop-target {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.3);
+  transform: scale(1.03);
+}
+
+/* ── Add slot ────────────────────────────────────────────── */
+.piu-slot--add {
+  border: 1.5px dashed rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.02);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.piu-slot--add:hover,
+.piu-slot--dragover {
+  border-color: rgba(59,130,246,0.5);
+  background: rgba(59,130,246,0.06);
+  transform: scale(1.02);
+}
+
+.piu-add-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px;
+}
+
+.piu-add-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(59,130,246,0.12);
+  border: 1px solid rgba(59,130,246,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  transition: background 0.15s, transform 0.15s;
+}
+.piu-add-icon svg { width: 16px; height: 16px; }
+.piu-slot--add:hover .piu-add-icon,
+.piu-slot--dragover  .piu-add-icon {
+  background: rgba(59,130,246,0.22);
+  transform: scale(1.08);
+}
+
+.piu-add-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  transition: color 0.15s;
+}
+.piu-add-hint {
+  font-size: 9px;
+  color: #334155;
+  letter-spacing: 0.02em;
+}
+.piu-slot--add:hover .piu-add-label,
+.piu-slot--dragover  .piu-add-label { color: #3b82f6; }
+
+/* ── Placeholder slots ───────────────────────────────────── */
+.piu-slot--placeholder {
+  border: 1.5px dashed rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.01);
+  pointer-events: none;
+}
+
+/* ── Bottom hint ─────────────────────────────────────────── */
+.piu-hint {
+  font-size: 11px;
+  color: #475569;
+  text-align: center;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ProductImageStrip  (read-only variants)
+═══════════════════════════════════════════════════════════ */
+
+/* ── Table thumbnail ─────────────────────────────────────── */
+.pis-thumb {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: #0f1623;
+  flex-shrink: 0;
+}
+.pis-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pis-more {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 8px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0,0,0,0.65);
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1.4;
+}
+
+/* ── Gallery (modal view) ────────────────────────────────── */
+.pis-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pis-main {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: #0f1623;
+}
+.pis-main img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.pis-thumbs {
+  display: flex;
+  gap: 8px;
+}
+.pis-thumb-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1.5px solid rgba(255,255,255,0.07);
+  background: #0f1623;
+  padding: 0;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+.pis-thumb-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pis-thumb-btn:hover { border-color: rgba(59,130,246,0.4); transform: scale(1.05); }
+.pis-thumb-btn--active { border-color: #3b82f6 !important; }

@@ -2,6 +2,7 @@ import cloudinary from "./cloudinary.js";
 
 export const uploadImagesToCloudinary = async (files) => {
   if (!files || files.length === 0) return [];
+  console.log("Uploading images to Cloudinary...");
 
   const uploads = await Promise.all(
     files.map((file) =>
