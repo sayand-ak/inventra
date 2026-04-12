@@ -17,14 +17,7 @@ interface ProductImageUploaderProps {
 }
 
 /* ─── Default / placeholder image (inline SVG as data URI) ── */
-const DEFAULT_IMG = `data:image/svg+xml;utf8,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
-  <rect width="120" height="120" rx="12" fill="%230f1623"/>
-  <rect x="20" y="28" width="80" height="64" rx="8" fill="%231e2a3a"/>
-  <circle cx="44" cy="50" r="8" fill="%232d3f57"/>
-  <path d="M20 76 L40 56 L60 72 L80 52 L100 76 Z" fill="%232d3f57"/>
-</svg>
-`)}`;
+const DEFAULT_IMG = '/default.png';
 
 const MAX = 4;
 
