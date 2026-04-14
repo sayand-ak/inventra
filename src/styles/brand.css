@@ -1086,13 +1086,17 @@ tbody tr:hover {
   }
 }
 
-@media(max-width:900px) {
-  .sidebar {
-    display: none
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main    { padding: 24px 16px; }
+
+  .tw {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .main {
-    padding: 24px 16px
+  table {
+    min-width: 600px;
   }
 }
 
