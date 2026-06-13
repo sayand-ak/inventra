@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getAllBrands, type Brand } from "../api/brand";
 import { getCategories } from "../api/category";
 import { getProducts } from "../api/product";
+import Sidebar from "../components/Sidebar";
 
 interface Stats {
   totalProducts: number;
@@ -68,16 +69,12 @@ const Home = () => {
     fetchData();
   }, []);
 
-  const logout = () => {
-    localStorage.clear();
-    navigate("/login");
-  };
-
   const navItems = [
-    { label: "Dashboard", active: true },
+    { label: "Dashboard", path: "/", active: true },
     { label: "Products", path: "/products" },
     { label: "Brands", path: "/brands" },
     { label: "Categories", path: "/categories" },
+    { label: "Catalogues", path: "/catalogues" },
   ];
 
   const statCards = [
@@ -215,7 +212,7 @@ const Home = () => {
           height: 100vh;
         }
 
-        .sidebar-logo {
+        .sb-logo {
           display: flex;
           align-items: center;
           gap: 10px;
@@ -224,7 +221,7 @@ const Home = () => {
           margin-bottom: 16px;
         }
 
-        .logo-icon {
+        .sb-logo-icon {
           width: 34px;
           height: 34px;
           background: linear-gradient(135deg, #3b82f6, #6366f1);
@@ -235,20 +232,20 @@ const Home = () => {
           flex-shrink: 0;
         }
 
-        .logo-icon svg {
+        .sb-logo-icon svg {
           width: 18px;
           height: 18px;
           color: white;
         }
 
-        .logo-name {
+        .sb-logo-name {
           font-size: 17px;
           font-weight: 700;
           color: var(--text);
           letter-spacing: -0.3px;
         }
 
-        .nav-section-label {
+        .sb-sec {
           font-size: 10px;
           font-weight: 600;
           letter-spacing: 1.5px;
@@ -276,6 +273,7 @@ const Home = () => {
           border-bottom: none;
           width: 100%;
           text-align: left;
+          font-family: 'Outfit', sans-serif;
         }
 
         .nav-item svg {
@@ -295,7 +293,7 @@ const Home = () => {
           background: rgba(59,130,246,0.08);
         }
 
-        .sidebar-bottom {
+        .sb-bottom {
           margin-top: auto;
           padding: 16px 24px 0;
           border-top: 1px solid var(--border);
@@ -308,7 +306,7 @@ const Home = () => {
           padding: 12px 0;
         }
 
-        .user-avatar {
+        .user-av {
           width: 34px;
           height: 34px;
           background: linear-gradient(135deg, #3b82f6, #6366f1);
@@ -322,7 +320,7 @@ const Home = () => {
           flex-shrink: 0;
         }
 
-        .user-details {
+        .user-det {
           flex: 1;
           overflow: hidden;
         }
@@ -718,74 +716,8 @@ const Home = () => {
       `}</style>
 
       <div className="home-root">
-        {/* Sidebar */}
-        <aside className="sidebar">
-          <div className="sidebar-logo">
-            <div className="logo-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Z"/>
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-              </svg>
-            </div>
-            <span className="logo-name">Inventra</span>
-          </div>
+        <Sidebar navItems={navItems} />
 
-          <span className="nav-section-label">Menu</span>
-
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              className={`nav-item ${item.active ? "active" : ""}`}
-              onClick={() => item.path && navigate(item.path)}
-            >
-              {item.label === "Dashboard" && (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/>
-                  <rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
-                </svg>
-              )}
-              {item.label === "Products" && (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                </svg>
-              )}
-              {item.label === "Brands" && (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85"/>
-                </svg>
-              )}
-              {item.label === "Categories" && (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                  <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-                </svg>
-              )}
-              {item.label}
-            </button>
-          ))}
-
-          <div className="sidebar-bottom">
-            <div className="user-info">
-              <div className="user-avatar">
-                {(user.email || "U")[0].toUpperCase()}
-              </div>
-              <div className="user-details">
-                <div className="user-name">{user.email || "User"}</div>
-                <div className="user-role">{user.isAdmin ? "Administrator" : "Shop Keeper"}</div>
-              </div>
-            </div>
-            <button className="logout-btn" onClick={logout}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-              Sign Out
-            </button>
-          </div>
-        </aside>
-
-        {/* Main */}
         <main className="main">
           <div className="page-header">
             <p className="greeting">{greeting}, {user.email?.split("@")[0] || "there"} 👋</p>

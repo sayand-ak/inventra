@@ -5,6 +5,7 @@ import Products from "./pages/Products";
 import ProtectedRoute from "./routes/ProtectedRoutes";
 import Brands from "./pages/Brands";
 import Categories from "./pages/Category";
+import Catalogues from "./pages/Catelogue";
 
 function App() {
   return (
@@ -46,6 +47,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Categories />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/catalogues"
+          element={
+            <ProtectedRoute>
+              <Catalogues />
             </ProtectedRoute>
           }
         />

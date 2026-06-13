@@ -42,6 +42,7 @@ const NAV_ITEMS = [
   { label: "Products", path: "/products", active: true },
   { label: "Brands", path: "/brands" },
   { label: "Categories", path: "/categories" },
+  { label: "Catalogues", path: "/catalogues" },
 ];
 
 const UNITS = [

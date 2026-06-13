@@ -6,6 +6,7 @@ import categoryRoutes from './routes/category.js'
 import brandRoutes from './routes/brand.js'
 import productRoutes from './routes/product.js'
 import userRoutes from './routes/user.js'
+import catalogueRoutes from './routes/catelogue.js'
 import { errorHandler } from './middlewares/error.js';
 import { authMiddleware } from './middlewares/auth.js';
 
@@ -28,6 +29,7 @@ const startServer = async () => {
     server.use('/api/categories', authMiddleware, categoryRoutes);
     server.use('/api/brands',authMiddleware, brandRoutes);
     server.use('/api/products',authMiddleware, productRoutes);
+    server.use('/api/catalogues',authMiddleware, catalogueRoutes);
 
     server.use(errorHandler);
 

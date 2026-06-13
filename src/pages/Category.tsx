@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { label: "Products",   path: "/products" },
   { label: "Brands",     path: "/brands" },
   { label: "Categories", path: "/categories", active: true },
+  { label: "Catalogues", path: "/catalogues" },
 ];
 
 /* ─── Component ──────────────────────────────────────────── */
