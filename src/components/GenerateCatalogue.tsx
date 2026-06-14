@@ -7,6 +7,7 @@ import {
   type LineItem,
 } from "../api/catalogue";
 import "../styles/catalogueGenerate.css";
+import { compressCatalogueImages } from '../utils/compressImage';
 
 import amLogo from "/logo.png";
 
@@ -319,8 +320,9 @@ const GenerateCatalogue = () => {
   useEffect(() => {
     if (!id) return;
     generateCatalogue(id)
+      .then(compressCatalogueImages)
       .then(setData)
-      .catch(() => setError("Failed to generate catalogue. Please check that products exist for the configured rules."))
+      .catch(() => setError("Failed to generate catalogue..."))
       .finally(() => setLoading(false));
   }, [id]);
 
