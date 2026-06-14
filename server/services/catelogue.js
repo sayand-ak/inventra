@@ -118,6 +118,7 @@ const generateCatalogue = async (catalogueId) => {
       category: product.category.name,
       flavour: product.flavour,
       quantity: product.quantity,
+      imageUrl: product.images?.[0]?.url ?? null, 
       basePrice,
       baseRetailPrice: baseRetail,
       increaseAmount,

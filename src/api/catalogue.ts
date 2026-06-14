@@ -37,6 +37,7 @@ export interface LineItem {
   category: string;
   flavour: string;
   quantity: { value: number; unit: string };
+  imageUrl: string | null;  
   basePrice: number;
   baseRetailPrice: number;
   increaseAmount: number;

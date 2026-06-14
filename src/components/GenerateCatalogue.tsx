@@ -16,98 +16,230 @@ const navItems = [
   { label: "Catalogues", path: "/catalogues" },
 ];
 
-// ─── Print Template (unchanged) ──────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function CatalogueTemplate({ data }: { data: GenerateResponse }) {
-  const { catalogue, grouped } = data;
-  const totalProducts = Object.values(grouped).reduce((s, items) => s + items.length, 0);
-  const generatedDate = new Date(catalogue.generatedAt).toLocaleDateString("en-IN", {
-    day: "2-digit", month: "long", year: "numeric",
-  });
-  const categoryColors = ["#3b82f6", "#10b981", "#f59e0b", "#a78bfa", "#f43f5e"];
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
 
+// ─── Cover Page ───────────────────────────────────────────────────────────────
+
+function CoverPage({
+  customerName,
+  place,
+  generatedDate,
+}: {
+  customerName: string;
+  place?: string;
+  generatedDate: string;
+}) {
   return (
-    <div id="catalogue-print-root" style={{
-      fontFamily: "'Outfit', 'Inter', Arial, sans-serif",
-      fontSize: 12, color: "#111827", background: "#fff",
-      padding: "36px 40px", boxSizing: "border-box", minWidth: 700,
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#111827", letterSpacing: "-0.5px" }}>AM Dynamic Wellness</div>
-          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2, letterSpacing: "0.3px" }}>WHOLESALE PRICE CATALOGUE</div>
+    <div className="cp-page cp-cover">
+      {/* Top accent bar */}
+      <div className="cp-cover-accent" />
+
+      <div className="cp-cover-body">
+        {/* Logo area */}
+        <div className="cp-logo-box">
+          <div className="cp-logo-placeholder">
+            <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+              <rect width="38" height="38" rx="8" fill="#1a1a2e" />
+              <text x="19" y="25" textAnchor="middle" fill="#fff" fontSize="14" fontWeight="700" fontFamily="sans-serif">AM</text>
+            </svg>
+            <span className="cp-logo-text">AM Dynamic Wellness</span>
+          </div>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>{catalogue.catalogueName}</div>
-          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>Generated: {generatedDate}</div>
+
+        {/* Main title block */}
+        <div className="cp-title-block">
+          <div className="cp-title-eyebrow">WHOLESALE</div>
+          <div className="cp-title-main">PRODUCT<br />CATALOGUE</div>
+          <div className="cp-title-rule" />
+        </div>
+
+        {/* Customer info */}
+        <div className="cp-customer-block">
+          <div className="cp-customer-label">Prepared for</div>
+          <div className="cp-customer-name">{customerName}</div>
+          {place && <div className="cp-customer-place">{place}</div>}
         </div>
       </div>
 
-      <div style={{ height: 2, background: "linear-gradient(90deg, #3b82f6, #a78bfa)", borderRadius: 2, marginBottom: 20 }} />
+      {/* Footer */}
+      <div className="cp-cover-footer">
+        <span>Generated: {generatedDate}</span>
+        <span>AM Dynamic Wellness</span>
+      </div>
+    </div>
+  );
+}
 
-      <div style={{ display: "flex", gap: 0, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb", marginBottom: 28, overflow: "hidden" }}>
-        {[
-          { label: "Prepared For", value: catalogue.customerName },
-          { label: "Customer Type", value: catalogue.customerType },
-          ...(catalogue.place ? [{ label: "Location", value: catalogue.place }] : []),
-          { label: "Total Products", value: String(totalProducts) },
-        ].map((f, i, arr) => (
-          <div key={f.label} style={{ flex: 1, padding: "14px 18px", borderRight: i < arr.length - 1 ? "1px solid #e5e7eb" : "none" }}>
-            <div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 4 }}>{f.label}</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{f.value}</div>
+// ─── Index Page ───────────────────────────────────────────────────────────────
+
+function IndexPage({ grouped }: { grouped: Record<string, LineItem[]> }) {
+  return (
+    <div className="cp-page cp-index">
+      <div className="cp-index-header">
+        <div className="cp-index-title">INDEX</div>
+        <div className="cp-index-rule" />
+      </div>
+
+      <div className="cp-index-body">
+        {Object.entries(grouped).map(([category, items]) => (
+          <div key={category} className="cp-index-category">
+            <div className="cp-index-cat-name">{category.toUpperCase()}</div>
+            <ul className="cp-index-list">
+              {items.map((item) => (
+                <li key={String(item.productId)} className="cp-index-item">
+                  <span className="cp-index-bullet">•</span>
+                  <span>{item.productName}</span>
+                  <span className="cp-index-qty">
+                    {item.quantity.value} {item.quantity.unit}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         ))}
       </div>
 
-      {Object.entries(grouped).map(([category, items], catIdx) => {
-        const accentColor = categoryColors[catIdx % categoryColors.length];
-        return (
-          <div key={category} style={{ marginBottom: 32, pageBreakInside: "avoid" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <div style={{ width: 3, height: 18, background: accentColor, borderRadius: 2, flexShrink: 0 }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#111827", textTransform: "uppercase", letterSpacing: "0.8px" }}>{category}</span>
-              <span style={{ fontSize: 10, color: accentColor, fontWeight: 600, background: `${accentColor}18`, padding: "2px 8px", borderRadius: 20 }}>
-                {items.length} product{items.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: "#f3f4f6" }}>
-                  {["Product", "Brand", "Flavour", "Pack Size", "MRP (₹)", "Your Price (₹)"].map((h, i) => (
-                    <th key={h} style={{
-                      padding: "8px 12px",
-                      textAlign: i >= 4 ? "right" : i === 3 ? "center" : "left",
-                      fontWeight: 600, fontSize: 10.5, color: "#374151",
-                      borderBottom: `2px solid ${accentColor}`, whiteSpace: "nowrap",
-                    }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item: LineItem, i: number) => (
-                  <tr key={String(item.productId)} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                    <td style={{ padding: "8px 12px", borderBottom: "1px solid #f3f4f6", fontWeight: 500, color: "#111827" }}>{item.productName}</td>
-                    <td style={{ padding: "8px 12px", borderBottom: "1px solid #f3f4f6", color: "#4b5563" }}>{item.brand}</td>
-                    <td style={{ padding: "8px 12px", borderBottom: "1px solid #f3f4f6", color: "#6b7280" }}>{item.flavour === "none" ? "—" : item.flavour}</td>
-                    <td style={{ padding: "8px 12px", borderBottom: "1px solid #f3f4f6", textAlign: "center", color: "#4b5563" }}>{item.quantity.value} {item.quantity.unit}</td>
-                    <td style={{ padding: "8px 12px", borderBottom: "1px solid #f3f4f6", textAlign: "right", color: "#9ca3af", textDecoration: "line-through" }}>
-                      {item.baseRetailPrice > 0 ? item.baseRetailPrice.toLocaleString("en-IN") : "—"}
-                    </td>
-                    <td style={{ padding: "8px 12px", borderBottom: "1px solid #f3f4f6", textAlign: "right" }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: "#111827" }}>{item.cataloguePrice.toLocaleString("en-IN")}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-      })}
-
-      <div style={{ marginTop: 24, paddingTop: 14, borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", fontSize: 10, color: "#9ca3af" }}>
-        <span>All prices are in Indian Rupees (₹) · Valid for this order only · Taxes applicable as per norms</span>
-        <span>AM Dynamic Wellness Wholesale · {generatedDate}</span>
+      <div className="cp-page-footer">
+        <span>AM Dynamic Wellness</span>
+        <span>Page 2</span>
       </div>
+    </div>
+  );
+}
+
+// ─── Product Card ─────────────────────────────────────────────────────────────
+
+function ProductCard({ item }: { item: LineItem }) {
+  return (
+    <div className="cp-product-card">
+      {/* Image area */}
+      <div className="cp-product-img-wrap">
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.productName}
+            className="cp-product-img"
+          />
+        ) : (
+          <div className="cp-product-img-placeholder">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            <span>Product Image</span>
+          </div>
+        )}
+      </div>
+
+      {/* Info area */}
+      <div className="cp-product-info">
+        <div className="cp-product-name">{item.productName}</div>
+
+        <div className="cp-product-meta">
+          <div className="cp-meta-row">
+            <span className="cp-meta-label">Brand</span>
+            <span className="cp-meta-value">{item.brand}</span>
+          </div>
+          <div className="cp-meta-row">
+            <span className="cp-meta-label">Quantity</span>
+            <span className="cp-meta-value">
+              {item.quantity.value} {item.quantity.unit}
+            </span>
+          </div>
+          {item.flavour && item.flavour !== "none" && (
+            <div className="cp-meta-row">
+              <span className="cp-meta-label">Flavour</span>
+              <span className="cp-meta-value">{item.flavour}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="cp-product-pricing">
+          <div className="cp-price-row cp-price-retail">
+            <span className="cp-price-label">Retail Price</span>
+            <span className="cp-price-val cp-price-val--retail">
+              {item.baseRetailPrice > 0
+                ? `₹${item.baseRetailPrice.toLocaleString("en-IN")}`
+                : "—"}
+            </span>
+          </div>
+          <div className="cp-price-row cp-price-wholesale">
+            <span className="cp-price-label">Wholesale Price</span>
+            <span className="cp-price-val cp-price-val--wholesale">
+              ₹{item.cataloguePrice.toLocaleString("en-IN")}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Product Page (2 cards) ───────────────────────────────────────────────────
+
+function ProductPage({
+  items,
+  pageNum,
+}: {
+  items: LineItem[];
+  pageNum: number;
+}) {
+  return (
+    <div className="cp-page cp-product-page">
+      <div className="cp-product-page-inner">
+        {items.map((item) => (
+          <ProductCard key={String(item.productId)} item={item} />
+        ))}
+        {/* Fill empty slot if only 1 product on last page */}
+        {items.length === 1 && <div className="cp-product-card cp-product-card--empty" />}
+      </div>
+
+      <div className="cp-page-footer">
+        <span>Page {pageNum}</span>
+        <span>AM Dynamic Wellness</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Full Catalogue Template ──────────────────────────────────────────────────
+
+function CatalogueTemplate({ data }: { data: GenerateResponse }) {
+  const { catalogue, grouped } = data;
+
+  const generatedDate = new Date(catalogue.generatedAt).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+  // Flatten all products in category order
+  const allItems: LineItem[] = Object.values(grouped).flat();
+  const pages = chunk(allItems, 2);
+
+  return (
+    <div className="cp-root">
+      {/* Page 1 — Cover */}
+      <CoverPage
+        customerName={catalogue.customerName}
+        place={catalogue.place}
+        generatedDate={generatedDate}
+      />
+
+      {/* Page 2 — Index */}
+      <IndexPage grouped={grouped} />
+
+      {/* Pages 3+ — Products */}
+      {pages.map((pageItems, i) => (
+        <ProductPage key={i} items={pageItems} pageNum={i + 3} />
+      ))}
     </div>
   );
 }
@@ -122,7 +254,7 @@ const GenerateCatalogue = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const activeNavItems = navItems.map(n =>
+  const activeNavItems = navItems.map((n) =>
     n.path === "/catalogues" ? { ...n, active: true } : n
   );
 
@@ -130,7 +262,11 @@ const GenerateCatalogue = () => {
     if (!id) return;
     generateCatalogue(id)
       .then(setData)
-      .catch(() => setError("Failed to generate catalogue. Please check that products exist for the configured rules."))
+      .catch(() =>
+        setError(
+          "Failed to generate catalogue. Please check that products exist for the configured rules."
+        )
+      )
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -161,12 +297,16 @@ const GenerateCatalogue = () => {
           <div className="gc-error-wrap">
             <div className="gc-error-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
             </div>
             <div className="gc-error-title">Generation failed</div>
             <div className="gc-error-sub">{error}</div>
-            <button className="btn-cancel" onClick={() => navigate("/catalogues")}>← Back to Catalogues</button>
+            <button className="btn-cancel" onClick={() => navigate("/catalogues")}>
+              ← Back to Catalogues
+            </button>
           </div>
         </main>
       </div>
@@ -188,7 +328,8 @@ const GenerateCatalogue = () => {
               <p className="cat-eyebrow">
                 <button className="gc-back-btn" onClick={() => navigate("/catalogues")}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
+                    <line x1="19" y1="12" x2="5" y2="12" />
+                    <polyline points="12 19 5 12 12 5" />
                   </svg>
                   Catalogues
                 </button>
@@ -207,66 +348,16 @@ const GenerateCatalogue = () => {
             </div>
           </div>
 
-          {/* ── Section 1: Catalogue Information ── */}
+          {/* ── Summary ── */}
           <div className="gc-section">
-            <div className="gc-section-label">
-              <span className="gc-section-num">1</span>
-              Catalogue Information
-            </div>
-            <div className="gc-info-grid">
-              {[
-                { label: "Catalogue Name", value: catalogue.catalogueName },
-                { label: "Customer Name", value: catalogue.customerName },
-                { label: "Customer Type", value: catalogue.customerType },
-                { label: "Location", value: catalogue.place || "—" },
-              ].map(f => (
-                <div key={f.label} className="gc-info-field">
-                  <span className="gc-info-label">{f.label}</span>
-                  <span className="gc-info-value">{f.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Section 2 & 3: Pricing Rules ── */}
-          <div className="gc-section">
-            <div className="gc-section-label">
-              <span className="gc-section-num">2</span>
-              Pricing Rules
-              <span className="gc-section-badge">{catalogue.pricingRules?.length ?? lineItems.length} rules applied</span>
-            </div>
-            <div className="gc-rules-list">
-              {/* Group line items back into rules for display */}
-              {Object.entries(grouped).map(([category, items]) =>
-                items.map((item) => (
-                  <div key={String(item.productId)} className="gc-rule-chip">
-                    <div className="gc-rule-chip-left">
-                      <div className="gc-rule-chip-dot" />
-                      <span className="gc-rule-chip-name">{item.productName}</span>
-                      <span className="gc-rule-chip-cat">{category}</span>
-                    </div>
-                    <div className="gc-rule-chip-right">
-                      <span className="gc-rule-chip-qty">{item.quantity.value} {item.quantity.unit}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* ── Section 3: Stats ── */}
-          <div className="gc-section">
-            <div className="gc-section-label">
-              <span className="gc-section-num">3</span>
-              Summary
-            </div>
+            <div className="gc-section-label">Summary</div>
             <div className="summary-row" style={{ marginBottom: 0 }}>
               {[
                 { label: "Customer", value: catalogue.customerName, color: "#3b82f6" },
                 { label: "Type", value: catalogue.customerType, color: "#a78bfa" },
                 { label: "Categories", value: Object.keys(grouped).length, color: "#f59e0b" },
                 { label: "Products", value: lineItems.length, color: "#10b981" },
-              ].map(p => (
+              ].map((p) => (
                 <div className="summary-pill" key={p.label}>
                   <div className="pill-dot" style={{ background: p.color }} />
                   <span className="pill-label">{p.label}</span>
@@ -276,22 +367,20 @@ const GenerateCatalogue = () => {
             </div>
           </div>
 
-          {/* ── Section 4: Catalogue Preview ── */}
+          {/* ── Catalogue Preview ── */}
           <div className="gc-section">
-            <div className="gc-section-label">
-              <span className="gc-section-num">4</span>
-              Catalogue Preview
-              <span className="gc-section-hint">What will be printed</span>
-            </div>
+            <div className="gc-section-label">Catalogue Preview</div>
             <div className="gc-preview-card">
               <div className="gc-preview-bar">
                 <div className="gc-dot gc-dot-red" />
                 <div className="gc-dot gc-dot-yellow" />
                 <div className="gc-dot gc-dot-green" />
-                <span className="gc-preview-label">Live Preview</span>
+                <span className="gc-preview-label">Print preview · scroll to browse pages</span>
               </div>
               <div className="gc-preview-body">
-                <CatalogueTemplate data={data} />
+                <div className="gc-preview-scaler">
+                  <CatalogueTemplate data={data} />
+                </div>
               </div>
             </div>
           </div>
@@ -310,7 +399,6 @@ const GenerateCatalogue = () => {
               Print / Save PDF
             </button>
           </div>
-
         </main>
       </div>
 
@@ -324,7 +412,7 @@ const GenerateCatalogue = () => {
         @media print {
           .no-print  { display: none !important; }
           .print-only { display: block !important; }
-          @page { size: A4; margin: 15mm 12mm; }
+          @page { size: A4; margin: 0; }
         }
         @media screen { .print-only { display: none; } }
       `}</style>

@@ -1,3 +1,7 @@
+/* ════════════════════════════════════════════════════════════════════
+   SCREEN UI — unchanged from original
+   ════════════════════════════════════════════════════════════════════ */
+
 /* ── Layout helpers ── */
 .gc-center {
   display: flex;
@@ -71,7 +75,6 @@
 .gc-section {
   margin-bottom: 28px;
 }
-
 .gc-section-label {
   display: flex;
   align-items: center;
@@ -84,135 +87,7 @@
   margin-bottom: 14px;
 }
 
-.gc-section-num {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--accent, #3b82f6);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
 
-.gc-section-badge {
-  font-size: 10px;
-  font-weight: 600;
-  color: #3b82f6;
-  background: rgba(59, 130, 246, 0.12);
-  padding: 2px 8px;
-  border-radius: 20px;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.gc-section-hint {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-/* ── Info grid ── */
-.gc-info-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.gc-info-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px 18px;
-  background: var(--surface);
-}
-
-.gc-info-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.gc-info-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-/* ── Rules list ── */
-.gc-rules-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.gc-rule-chip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 12px;
-}
-
-.gc-rule-chip-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.gc-rule-chip-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #3b82f6;
-  flex-shrink: 0;
-}
-
-.gc-rule-chip-name {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.gc-rule-chip-cat {
-  font-size: 11px;
-  color: var(--text-muted);
-  background: var(--surface-raised, rgba(255,255,255,0.05));
-  border: 1px solid var(--border);
-  padding: 1px 7px;
-  border-radius: 12px;
-}
-
-.gc-rule-chip-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.gc-rule-chip-qty {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.gc-rule-chip-increase {
-  font-size: 12px;
-  font-weight: 700;
-  color: #10b981;
-  font-family: 'JetBrains Mono', monospace;
-}
 
 /* ── Preview card ── */
 .gc-preview-card {
@@ -248,6 +123,17 @@
 
 .gc-preview-body {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 780px;
+  background: #d1d5db;
+  padding: 24px;
+}
+
+/* Scale the 794px-wide catalogue down to fit the panel */
+.gc-preview-scaler {
+  transform-origin: top left;
+  transform: scale(0.75);
+  width: calc(100% / 0.75);
 }
 
 /* ── Bottom actions bar ── */
@@ -258,4 +144,448 @@
   padding: 20px 0 8px;
   border-top: 1px solid var(--border);
   margin-top: 8px;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+   CATALOGUE PRINT TEMPLATE
+   All .cp-* classes are used exclusively by CatalogueTemplate
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Root wrapper — screen: shows pages as cards stacked vertically */
+.cp-root {
+  font-family: 'Outfit', 'Inter', Arial, sans-serif;
+  font-size: 13px;
+  color: #111827;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 600px;
+}
+
+/* Every "page" shares these base styles */
+.cp-page {
+  background: #fff;
+  width: 794px;       /* A4 width at 96dpi */
+  min-height: 1123px; /* A4 height at 96dpi */
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+}
+
+/* ── Cover Page ───────────────────────────────────────────────── */
+
+.cp-cover-accent {
+  height: 8px;
+  background: linear-gradient(90deg, #1a1a2e 0%, #3b82f6 60%, #a78bfa 100%);
+  flex-shrink: 0;
+}
+
+.cp-cover-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 80px;
+  text-align: center;
+  gap: 48px;
+}
+
+.cp-logo-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-logo-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 16px 28px;
+}
+
+.cp-logo-text {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1a1a2e;
+  letter-spacing: -0.3px;
+}
+
+.cp-title-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.cp-title-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.cp-title-main {
+  font-size: 52px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+}
+
+.cp-title-rule {
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #3b82f6, #a78bfa);
+  border-radius: 2px;
+  margin-top: 4px;
+}
+
+.cp-customer-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 24px 48px;
+}
+
+.cp-customer-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+
+.cp-customer-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.cp-customer-place {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.cp-cover-footer {
+  padding: 20px 40px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+/* ── Index Page ───────────────────────────────────────────────── */
+
+.cp-index {
+  padding: 60px 64px 40px;
+}
+
+.cp-index-header {
+  margin-bottom: 40px;
+}
+
+.cp-index-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.5px;
+  margin-bottom: 14px;
+}
+
+.cp-index-rule {
+  height: 2px;
+  background: #111827;
+}
+
+.cp-index-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.cp-index-category {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-index-cat-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  letter-spacing: 1.5px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cp-index-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cp-index-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #374151;
+  padding: 4px 0;
+}
+
+.cp-index-bullet {
+  color: #9ca3af;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.cp-index-qty {
+  margin-left: auto;
+  font-size: 11px;
+  color: #9ca3af;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Page Footer (shared by index + product pages) ─────────────── */
+
+.cp-page-footer {
+  margin-top: auto;
+  padding: 16px 40px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #9ca3af;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+/* ── Product Pages ────────────────────────────────────────────── */
+
+.cp-product-page {
+  padding: 48px 48px 0;
+}
+
+.cp-product-page-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Product Card ────────────────────────────────────────────── */
+
+.cp-product-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  background: #fff;
+  flex: 1;
+}
+
+.cp-product-card--empty {
+  border-color: transparent;
+  background: transparent;
+}
+
+/* Image column */
+.cp-product-img-wrap {
+  width: 220px;
+  flex-shrink: 0;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.cp-product-img {
+  max-width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+}
+
+.cp-product-img-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #d1d5db;
+  font-size: 11px;
+}
+
+/* Info column */
+.cp-product-info {
+  flex: 1;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cp-product-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.3px;
+  margin-bottom: 20px;
+  line-height: 1.2;
+}
+
+.cp-product-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.cp-meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+}
+
+.cp-meta-label {
+  font-size: 11px;
+  color: #6b7280;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.cp-meta-label::after {
+  content: ":";
+}
+
+.cp-meta-value {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 500;
+}
+
+/* Pricing */
+.cp-product-pricing {
+  margin-top: auto;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.cp-price-label {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.cp-price-val {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cp-price-val--retail {
+  color: #000000;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.cp-price-val--wholesale {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.cp-price-wholesale {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 4px;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+   PRINT OVERRIDES
+   ════════════════════════════════════════════════════════════════════ */
+
+@media print {
+  .no-print  { display: none !important; }
+  .print-only { display: block !important; }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  /* Reset root wrapper for print — pages flow naturally */
+  .cp-root {
+    gap: 0;
+  }
+
+  /* Each page breaks to new page */
+  .cp-page {
+    width: 100%;
+    min-height: 100vh;
+    height: 100vh;
+    page-break-after: always;
+    break-after: page;
+    box-shadow: none;
+  }
+
+  /* Last page shouldn't force an extra blank */
+  .cp-page:last-child {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Don't break inside a product card */
+  .cp-product-card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Keep product page inner from splitting */
+  .cp-product-page-inner {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Flatten shadows & borders for crisp print */
+  .cp-product-card,
+  .cp-customer-block,
+  .cp-logo-placeholder {
+    box-shadow: none;
+  }
+}
+
+@media screen {
+  .print-only { display: none; }
 }
