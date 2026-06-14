@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import { getCategories } from "../api/category";
 import { getAllBrands } from "../api/brand";
+import { addCatalogue as apiAddCatalogue, getCatalogues } from "../api/catalogue";
 import "../styles/catalogue.css";
+import { getQuantityValues } from "../api/product";
 
 interface PricingRule {
   ruleType: "CATEGORY" | "BRAND";
   referenceId: string;
-  referenceName?: string; // display only, stripped before submit
+  referenceName?: string;
   quantityValue: number;
   quantityUnit: string;
   increaseAmount: number;
@@ -33,9 +35,6 @@ interface RefItem {
   name: string;
 }
 
-const API_BASE = "/api/catalogues";
-const UNIT_OPTIONS = ["kg", "g", "mg", "litre", "ml", "tablet", "box", "bottle", "piece"];
-
 const emptyRule = (): PricingRule => ({
   ruleType: "CATEGORY",
   referenceId: "",
@@ -47,28 +46,6 @@ const emptyRule = (): PricingRule => ({
 
 const emptyForm = { catalogueName: "", customerName: "", customerType: "", place: "" };
 
-async function fetchCatalogues(): Promise<Catalogue[]> {
-  const res = await fetch(API_BASE);
-  if (!res.ok) throw new Error();
-  return res.json();
-}
-
-async function createCatalogue(data: object): Promise<Catalogue> {
-  const res = await fetch(API_BASE, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error();
-  return res.json();
-}
-
-async function deleteCatalogueById(id: string) {
-  const res = await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error();
-}
-
-// ── Helper: build human-readable rule summary ──────────────────────────────
 function getRuleSummary(
   rule: PricingRule,
   categories: RefItem[],
@@ -83,7 +60,6 @@ function getRuleSummary(
   return `${prefix} "${match.name}"${suffix} · ${rule.quantityValue} ${rule.quantityUnit} → +₹${rule.increaseAmount}`;
 }
 
-// ── Helper: detect duplicate rules ────────────────────────────────────────
 function isDuplicateRule(rules: PricingRule[], idx: number): boolean {
   const r = rules[idx];
   if (!r.referenceId) return false;
@@ -96,8 +72,6 @@ function isDuplicateRule(rules: PricingRule[], idx: number): boolean {
       other.quantityUnit === r.quantityUnit
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 const Catalogues = () => {
   const navigate = useNavigate();
@@ -115,6 +89,7 @@ const Catalogues = () => {
   const [categories, setCategories] = useState<RefItem[]>([]);
   const [brands, setBrands] = useState<RefItem[]>([]);
   const [refLoading, setRefLoading] = useState(false);
+  const [quantityValues, setQuantityValues] = useState<{ value: number; unit: string }[]>([]);
 
   const navItems = [
     { label: "Dashboard", path: "/" },
@@ -130,8 +105,14 @@ const Catalogues = () => {
 
   async function load() {
     setLoading(true);
+    setError("");
     try {
-      setCatalogues(await fetchCatalogues());
+      const [catalogues, qtyValues] = await Promise.all([
+        getCatalogues(),
+        getQuantityValues(),
+      ]);
+      setCatalogues(catalogues);
+      setQuantityValues(qtyValues);
     } catch {
       setError("Could not load catalogues.");
     } finally {
@@ -190,7 +171,6 @@ const Catalogues = () => {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
 
-    // Block if any rule has a duplicate
     const hasDup = rules.some((_, i) => isDuplicateRule(rules, i));
     if (hasDup) {
       setError("Please fix duplicate pricing rules before submitting.");
@@ -200,15 +180,13 @@ const Catalogues = () => {
     setSubmitting(true);
     setError("");
     try {
-      const cleanRules = rules.map((rule) => {
-        const r = { ...rule };
-        delete r.referenceName;
-        return r;
+      const cleanRules = rules.map(({ referenceName, ...rest }) => {
+        void referenceName;
+        return rest;
       });
-      const created = await createCatalogue({
+      const created = await apiAddCatalogue({
         ...form,
         pricingRules: cleanRules,
-        status: "draft",
       });
       setCatalogues((prev) => [created, ...prev]);
       setShowModal(false);
@@ -221,7 +199,7 @@ const Catalogues = () => {
 
   async function handleDelete(id: string) {
     try {
-      await deleteCatalogueById(id);
+      // wire up your delete API call here when ready
       setCatalogues((prev) => prev.filter((c) => c._id !== id));
       setDeleteTarget(null);
     } catch {
@@ -249,7 +227,6 @@ const Catalogues = () => {
         <Sidebar navItems={navItems} />
         <main className="cat-main">
 
-          {/* Top bar */}
           <div className="cat-topbar">
             <div>
               <p className="cat-eyebrow">Manage &amp; generate</p>
@@ -276,7 +253,6 @@ const Catalogues = () => {
             </div>
           </div>
 
-          {/* Summary pills */}
           <div className="summary-row">
             {[
               { label: "Total", value: catalogues.length, color: "#3b82f6" },
@@ -291,7 +267,6 @@ const Catalogues = () => {
             ))}
           </div>
 
-          {/* Table */}
           <div className="table-card">
             <div className="table-header-row">
               <span className="table-section-title">All Catalogues</span>
@@ -409,7 +384,6 @@ const Catalogues = () => {
         </main>
       </div>
 
-      {/* ── Add Catalogue Modal ── */}
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal">
@@ -426,7 +400,6 @@ const Catalogues = () => {
               <div className="modal-scroll">
                 {error && <div className="modal-error">{error}</div>}
 
-                {/* ── Basic Info ── */}
                 <div className="section-divider">Basic Info</div>
 
                 <div className="form-group">
@@ -471,7 +444,6 @@ const Catalogues = () => {
                   />
                 </div>
 
-                {/* ── Pricing Rules ── */}
                 <div className="section-divider">Pricing Rules</div>
                 <p className="section-hint">
                   Each rule matches products by <code>category or brand</code> + <code>exact quantity</code> and applies the same wholesale price increase to all matches.
@@ -491,7 +463,6 @@ const Catalogues = () => {
                         key={idx}
                         className={`rule-card${isDup ? " has-dup" : isComplete ? " is-complete" : ""}`}
                       >
-                        {/* Card header */}
                         <div className="rule-card-head">
                           <span className="rule-card-label">
                             <span className="rule-index">{idx + 1}</span>
@@ -499,28 +470,14 @@ const Catalogues = () => {
                             {isComplete && <span className="rule-configured-badge">configured</span>}
                             {isDup && <span className="rule-dup-badge">duplicate</span>}
                           </span>
-                          <button
-                            type="button"
-                            className="rule-remove"
-                            onClick={() => removeRule(idx)}
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <line x1="18" y1="6" x2="6" y2="18" />
-                              <line x1="6" y1="6" x2="18" y2="18" />
+                          <button type="button" className="rule-remove" onClick={() => removeRule(idx)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                             </svg>
                           </button>
                         </div>
 
                         <div className="rule-card-body">
-
-                          {/* ── Match by type ── */}
                           <div>
                             <div className="match-label">Match products by</div>
                             <div className="rule-type-selector">
@@ -550,7 +507,6 @@ const Catalogues = () => {
                             </div>
                           </div>
 
-                          {/* ── Reference list ── */}
                           <div className="form-group" style={{ marginBottom: 0 }}>
                             <label className="form-label">
                               Select {label} *{" "}
@@ -590,34 +546,38 @@ const Catalogues = () => {
                             )}
                           </div>
 
-                          {/* ── Quantity + price increase ── */}
                           <div>
                             <div className="qty-label">When quantity is exactly</div>
                             <div className="qty-row">
-                              <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: 11 }}>Value *</label>
-                                <input
-                                  className="form-input"
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  placeholder="e.g. 2"
-                                  value={rule.quantityValue || ""}
-                                  onChange={e => updateRule(idx, { quantityValue: parseFloat(e.target.value) || 0 })}
-                                  required
-                                />
+                              <div className="form-group" style={{ marginBottom: 0, flex: 2 }}>
+                                <label className="form-label" style={{ fontSize: 11 }}>Quantity *</label>
+                                {quantityValues.length === 0 ? (
+                                  <select className="form-select" disabled>
+                                    <option>No quantities found</option>
+                                  </select>
+                                ) : (
+                                  <select
+                                    className="form-select"
+                                    value={rule.quantityValue && rule.quantityUnit ? `${rule.quantityValue}::${rule.quantityUnit}` : ""}
+                                    onChange={e => {
+                                      const [val, unit] = e.target.value.split("::");
+                                      updateRule(idx, {
+                                        quantityValue: parseFloat(val),
+                                        quantityUnit: unit,
+                                      });
+                                    }}
+                                    required
+                                  >
+                                    <option value="" disabled>Select quantity…</option>
+                                    {quantityValues.map(q => (
+                                      <option key={`${q.value}::${q.unit}`} value={`${q.value}::${q.unit}`}>
+                                        {q.value} {q.unit}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
                               </div>
-                              <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: 11 }}>Unit *</label>
-                                <select
-                                  className="form-select"
-                                  value={rule.quantityUnit}
-                                  onChange={e => updateRule(idx, { quantityUnit: e.target.value })}
-                                >
-                                  {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
-                                </select>
-                              </div>
-                              <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
                                 <label className="form-label" style={{ fontSize: 11 }}>Price increase *</label>
                                 <div className="input-prefix">
                                   <span className="prefix-symbol">₹</span>
@@ -636,7 +596,6 @@ const Catalogues = () => {
                             </div>
                           </div>
 
-                          {/* ── Rule summary ── */}
                           {isDup ? (
                             <div className="rule-summary duplicate">
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -663,7 +622,6 @@ const Catalogues = () => {
                               <span>Fill in all fields above to preview this rule.</span>
                             </div>
                           )}
-
                         </div>
                       </div>
                     );
@@ -676,7 +634,6 @@ const Catalogues = () => {
                   </svg>
                   Add Pricing Rule
                 </button>
-
               </div>
 
               <div className="modal-footer">
@@ -697,7 +654,6 @@ const Catalogues = () => {
         </div>
       )}
 
-      {/* ── Delete confirm ── */}
       {deleteTarget && (
         <div className="confirm-overlay">
           <div className="confirm-box">

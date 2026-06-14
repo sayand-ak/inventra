@@ -223,3 +223,8 @@ export const deleteStockEntry = async (
 ): Promise<void> => {
   await axiosInstance.delete(`/products/${productId}/stock/${entryId}`);
 };
+
+export const getQuantityValues = async (): Promise<{ value: number; unit: string }[]> => {
+  const response = await axiosInstance.get("/products/get-quantity-values");
+  return response.data;
+};

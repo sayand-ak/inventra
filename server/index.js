@@ -28,7 +28,7 @@ const startServer = async () => {
     server.use('/api/auth', userRoutes);
     server.use('/api/categories', authMiddleware, categoryRoutes);
     server.use('/api/brands',authMiddleware, brandRoutes);
-    server.use('/api/products',authMiddleware, productRoutes);
+    server.use('/api/products', productRoutes);
     server.use('/api/catalogues',authMiddleware, catalogueRoutes);
 
     server.use(errorHandler);

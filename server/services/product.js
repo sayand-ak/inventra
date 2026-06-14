@@ -420,6 +420,38 @@ const enrichProduct = async (product, isShopKeeper) => {
   return base;
 };
 
+const getQuantityValues = async () => {
+  try {
+    const quantityValues = await Product.aggregate([
+      {
+        $group: {
+          _id: {
+            value: "$quantity.value",
+            unit: "$quantity.unit",
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          value: "$_id.value",
+          unit: "$_id.unit",
+        },
+      },
+      {
+        $sort: {
+          unit: 1,
+          value: 1,
+        },
+      },
+    ]);
+
+    return quantityValues;
+  } catch (err) {
+    throw new AppError("Failed to retrieve quantity values", 500);
+  }
+};
+
 export default {
   addProduct,
   getProducts,
@@ -431,4 +463,5 @@ export default {
   getStockHistory,
   editStockEntry,
   deleteStockEntry,
+  getQuantityValues,
 };

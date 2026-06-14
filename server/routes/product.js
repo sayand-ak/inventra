@@ -4,6 +4,8 @@ import upload from "../middlewares/multer.js";
 
 const router = express.Router();
 
+router.get("/get-quantity-values", productController.getQuantityValues);
+
 router
   .route("/")
   .post(upload.array("images", 4), productController.addProduct)
@@ -25,5 +27,6 @@ router
   .route("/:id/stock/:entryId")
   .put(productController.editStockEntry) // edit count/price/retailPrice/note/stockDate
   .delete(productController.deleteStockEntry); // delete batch (admin only)
+
 
 export default router;

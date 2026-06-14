@@ -125,6 +125,15 @@ const deleteStockEntry = async (req, res, next) => {
   }
 };
 
+const getQuantityValues = async (req, res, next) => {
+  try {
+    const quantityValues = await productService.getQuantityValues();
+    res.status(200).json(quantityValues);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export default {
   addProduct,
   getProducts,
@@ -136,4 +145,5 @@ export default {
   getStockHistory,
   editStockEntry,
   deleteStockEntry,
+  getQuantityValues,
 };
