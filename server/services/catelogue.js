@@ -27,9 +27,7 @@ const getAllCatalogues = async () => {
   return catalogues;
 };
 
-const generateCatalogue = async (catalogueId) => {
-  console.log(catalogueId);
-  
+const generateCatalogue = async (catalogueId) => {  
   const catalogue = await Catalogue.findById(catalogueId);
   if (!catalogue) throw new AppError("Catalogue not found", 404, "CATALOGUE_NOT_FOUND");
   if (catalogue.isDeleted) throw new AppError("Catalogue not found", 404, "CATALOGUE_NOT_FOUND");
