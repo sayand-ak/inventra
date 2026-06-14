@@ -1,18 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
-import { getCategories } from "../api/category";
-import { getAllBrands } from "../api/brand";
 import { addCatalogue as apiAddCatalogue, getCatalogues } from "../api/catalogue";
+import { getProducts } from "../api/product";
+import type { Product } from "../api/product";
 import "../styles/catalogue.css";
-import { getQuantityValues } from "../api/product";
 
 interface PricingRule {
-  ruleType: "CATEGORY" | "BRAND";
-  referenceId: string;
-  referenceName?: string;
-  quantityValue: number;
-  quantityUnit: string;
+  productIds: string[];
   increaseAmount: number;
 }
 
@@ -30,48 +25,19 @@ interface Catalogue {
   updatedAt: string;
 }
 
-interface RefItem {
-  _id: string;
-  name: string;
+interface FormState {
+  catalogueName: string;
+  customerName: string;
+  customerType: string;
+  place: string;
 }
 
-const emptyRule = (): PricingRule => ({
-  ruleType: "CATEGORY",
-  referenceId: "",
-  referenceName: "",
-  quantityValue: 0,
-  quantityUnit: "kg",
-  increaseAmount: 0,
-});
-
-const emptyForm = { catalogueName: "", customerName: "", customerType: "", place: "" };
-
-function getRuleSummary(
-  rule: PricingRule,
-  categories: RefItem[],
-  brands: RefItem[]
-): string | null {
-  if (!rule.referenceId || !rule.quantityValue || !rule.increaseAmount) return null;
-  const list = rule.ruleType === "CATEGORY" ? categories : brands;
-  const match = list.find((x) => x._id === rule.referenceId);
-  if (!match) return null;
-  const prefix = rule.ruleType === "CATEGORY" ? "All products in" : "All";
-  const suffix = rule.ruleType === "BRAND" ? " (brand)" : "";
-  return `${prefix} "${match.name}"${suffix} · ${rule.quantityValue} ${rule.quantityUnit} → +₹${rule.increaseAmount}`;
-}
-
-function isDuplicateRule(rules: PricingRule[], idx: number): boolean {
-  const r = rules[idx];
-  if (!r.referenceId) return false;
-  return rules.some(
-    (other, i) =>
-      i !== idx &&
-      other.ruleType === r.ruleType &&
-      other.referenceId === r.referenceId &&
-      other.quantityValue === r.quantityValue &&
-      other.quantityUnit === r.quantityUnit
-  );
-}
+const emptyForm: FormState = {
+  catalogueName: "",
+  customerName: "",
+  customerType: "",
+  place: "",
+};
 
 const Catalogues = () => {
   const navigate = useNavigate();
@@ -79,17 +45,24 @@ const Catalogues = () => {
   const [catalogues, setCatalogues] = useState<Catalogue[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [rules, setRules] = useState<PricingRule[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  const [categories, setCategories] = useState<RefItem[]>([]);
-  const [brands, setBrands] = useState<RefItem[]>([]);
-  const [refLoading, setRefLoading] = useState(false);
-  const [quantityValues, setQuantityValues] = useState<{ value: number; unit: string }[]>([]);
+  // Products
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+
+  // Product list filters
+  const [productSearch, setProductSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterBrand, setFilterBrand] = useState("");
+
+  // Active group being edited (which rule index is open)
+  const [activeRuleIdx, setActiveRuleIdx] = useState<number | null>(null);
 
   const navItems = [
     { label: "Dashboard", path: "/" },
@@ -107,12 +80,8 @@ const Catalogues = () => {
     setLoading(true);
     setError("");
     try {
-      const [catalogues, qtyValues] = await Promise.all([
-        getCatalogues(),
-        getQuantityValues(),
-      ]);
-      setCatalogues(catalogues);
-      setQuantityValues(qtyValues);
+      const data = await getCatalogues();
+      setCatalogues(data);
     } catch {
       setError("Could not load catalogues.");
     } finally {
@@ -120,23 +89,15 @@ const Catalogues = () => {
     }
   }
 
-  async function loadRefs() {
-    setRefLoading(true);
+  async function loadProducts() {
+    setProductsLoading(true);
     try {
-      const [cats, brnds] = await Promise.allSettled([
-        getCategories(),
-        getAllBrands(),
-      ]);
-      if (cats.status === "fulfilled")
-        setCategories(
-          Array.isArray(cats.value)
-            ? cats.value.map((c) => ({ _id: String(c._id), name: c.name }))
-            : []
-        );
-      if (brnds.status === "fulfilled")
-        setBrands(Array.isArray(brnds.value) ? brnds.value : []);
+      const data = await getProducts({ limit: 500, page: 1 });
+      setAllProducts(data.products);
+    } catch {
+      setAllProducts([]);
     } finally {
-      setRefLoading(false);
+      setProductsLoading(false);
     }
   }
 
@@ -144,50 +105,93 @@ const Catalogues = () => {
     setForm(emptyForm);
     setRules([]);
     setError("");
+    setProductSearch("");
+    setFilterCategory("");
+    setFilterBrand("");
+    setActiveRuleIdx(null);
     setShowModal(true);
-    loadRefs();
+    loadProducts();
   }
 
-  function addRule() {
-    setRules((prev) => [...prev, emptyRule()]);
+  function addGroup() {
+    const newIdx = rules.length;
+    setRules((prev) => [...prev, { productIds: [], increaseAmount: 0 }]);
+    setActiveRuleIdx(newIdx);
   }
 
-  function updateRule(idx: number, patch: Partial<PricingRule>) {
+  function removeGroup(idx: number) {
+    setRules((prev) => prev.filter((_, i) => i !== idx));
+    setActiveRuleIdx((prev) => {
+      if (prev === null) return null;
+      if (prev === idx) return null;
+      if (prev > idx) return prev - 1;
+      return prev;
+    });
+  }
+
+  function updateIncrease(idx: number, amount: number) {
+    setRules((prev) =>
+      prev.map((r, i) => (i === idx ? { ...r, increaseAmount: amount } : r))
+    );
+  }
+
+  // All product IDs already assigned to any group
+  const allAssigned = new Set(rules.flatMap((r) => r.productIds));
+
+  function toggleProduct(productId: string) {
+    if (activeRuleIdx === null) return;
     setRules((prev) =>
       prev.map((r, i) => {
-        if (i !== idx) return r;
-        const updated = { ...r, ...patch };
-        if (patch.ruleType && patch.ruleType !== r.ruleType)
-          updated.referenceId = "";
-        return updated;
+        if (i !== activeRuleIdx) return r;
+        const already = r.productIds.includes(productId);
+        return {
+          ...r,
+          productIds: already
+            ? r.productIds.filter((id) => id !== productId)
+            : [...r.productIds, productId],
+        };
       })
     );
   }
 
-  function removeRule(idx: number) {
-    setRules((prev) => prev.filter((_, i) => i !== idx));
-  }
+  // Derived filter options
+  const categoryOptions = Array.from(
+    new Map(allProducts.map((p) => [p.category._id, p.category.name])).entries()
+  );
+  const brandOptions = Array.from(
+    new Map(allProducts.map((p) => [p.brand._id, p.brand.name])).entries()
+  );
+
+  const filteredProducts = allProducts.filter((p) => {
+    const matchesSearch =
+      p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+      p.brand.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+      p.category.name.toLowerCase().includes(productSearch.toLowerCase());
+    const matchesCategory = filterCategory ? p.category._id === filterCategory : true;
+    const matchesBrand = filterBrand ? p.brand._id === filterBrand : true;
+    return matchesSearch && matchesCategory && matchesBrand;
+  });
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-
-    const hasDup = rules.some((_, i) => isDuplicateRule(rules, i));
-    if (hasDup) {
-      setError("Please fix duplicate pricing rules before submitting.");
+    if (!rules.length) {
+      setError("Add at least one pricing group.");
       return;
     }
-
+    for (const r of rules) {
+      if (!r.productIds.length) {
+        setError("Each pricing group must have at least one product selected.");
+        return;
+      }
+      if (!r.increaseAmount) {
+        setError("Each pricing group must have a price increase amount.");
+        return;
+      }
+    }
     setSubmitting(true);
     setError("");
     try {
-      const cleanRules = rules.map(({ referenceName, ...rest }) => {
-        void referenceName;
-        return rest;
-      });
-      const created = await apiAddCatalogue({
-        ...form,
-        pricingRules: cleanRules,
-      });
+      const created = await apiAddCatalogue({ ...form, pricingRules: rules });
       setCatalogues((prev) => [created, ...prev]);
       setShowModal(false);
     } catch {
@@ -199,7 +203,6 @@ const Catalogues = () => {
 
   async function handleDelete(id: string) {
     try {
-      // wire up your delete API call here when ready
       setCatalogues((prev) => prev.filter((c) => c._id !== id));
       setDeleteTarget(null);
     } catch {
@@ -220,6 +223,8 @@ const Catalogues = () => {
       month: "short",
       year: "numeric",
     });
+
+  const totalSelected = new Set(rules.flatMap((r) => r.productIds)).size;
 
   return (
     <>
@@ -276,7 +281,7 @@ const Catalogues = () => {
             {loading ? (
               <table className="data-table">
                 <thead><tr>
-                  <th>Catalogue</th><th>Customer</th><th>Place</th><th>Rules</th><th>Status</th><th>Created</th><th>Actions</th>
+                  <th>Catalogue</th><th>Customer</th><th>Place</th><th>Groups</th><th>Status</th><th>Created</th><th>Actions</th>
                 </tr></thead>
                 <tbody>
                   {[1, 2, 3].map(i => (
@@ -311,7 +316,7 @@ const Catalogues = () => {
             ) : (
               <table className="data-table">
                 <thead><tr>
-                  <th>Catalogue</th><th>Customer</th><th>Place</th><th>Rules</th><th>Status</th><th>Created</th><th>Actions</th>
+                  <th>Catalogue</th><th>Customer</th><th>Place</th><th>Groups</th><th>Status</th><th>Created</th><th>Actions</th>
                 </tr></thead>
                 <tbody>
                   {filtered.map((cat, i) => {
@@ -335,7 +340,7 @@ const Catalogues = () => {
                         <td style={{ color: "var(--text-muted)", fontSize: 13 }}>{cat.place || "—"}</td>
                         <td>
                           <span className="rules-badge">
-                            {cat.pricingRules?.length ?? 0} rule{(cat.pricingRules?.length ?? 0) !== 1 ? "s" : ""}
+                            {cat.pricingRules?.length ?? 0} group{(cat.pricingRules?.length ?? 0) !== 1 ? "s" : ""}
                           </span>
                         </td>
                         <td>
@@ -380,13 +385,12 @@ const Catalogues = () => {
               </table>
             )}
           </div>
-
         </main>
       </div>
 
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="modal">
+          <div className="modal" style={{ maxWidth: 780 }}>
             <div className="modal-head">
               <span className="modal-title">New Catalogue</span>
               <button className="modal-close" onClick={() => setShowModal(false)}>
@@ -400,8 +404,8 @@ const Catalogues = () => {
               <div className="modal-scroll">
                 {error && <div className="modal-error">{error}</div>}
 
+                {/* ── Basic Info ── */}
                 <div className="section-divider">Basic Info</div>
-
                 <div className="form-group">
                   <label className="form-label">Catalogue Name *</label>
                   <input
@@ -444,196 +448,269 @@ const Catalogues = () => {
                   />
                 </div>
 
-                <div className="section-divider">Pricing Rules</div>
+                {/* ── Pricing Groups ── */}
+                <div className="section-divider">
+                  Pricing Groups
+                  {totalSelected > 0 && (
+                    <span style={{ fontWeight: 400, fontSize: 12, color: "var(--text-muted)", marginLeft: 8 }}>
+                      {totalSelected} product{totalSelected !== 1 ? "s" : ""} assigned
+                    </span>
+                  )}
+                </div>
                 <p className="section-hint">
-                  Each rule matches products by <code>category or brand</code> + <code>exact quantity</code> and applies the same wholesale price increase to all matches.
-                  Example: all <code>Whey Protein · 2 kg</code> → <code>+₹500</code>
+                  Create groups of products and set a price increase for each group.
+                  A product can only belong to one group.
                 </p>
 
-                <div className="rules-list">
-                  {rules.map((rule, idx) => {
-                    const refList = rule.ruleType === "CATEGORY" ? categories : brands;
-                    const label = rule.ruleType === "CATEGORY" ? "category" : "brand";
-                    const summary = getRuleSummary(rule, categories, brands);
-                    const isDup = isDuplicateRule(rules, idx);
-                    const isComplete = !!summary && !isDup;
-
-                    return (
-                      <div
+                {/* Group tabs */}
+                {rules.length > 0 && (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+                    {rules.map((rule, idx) => (
+                      <button
                         key={idx}
-                        className={`rule-card${isDup ? " has-dup" : isComplete ? " is-complete" : ""}`}
+                        type="button"
+                        onClick={() => setActiveRuleIdx(activeRuleIdx === idx ? null : idx)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          border: "1.5px solid",
+                          borderColor: activeRuleIdx === idx ? "var(--accent)" : "var(--border)",
+                          background: activeRuleIdx === idx ? "rgba(99,102,241,0.08)" : "var(--surface)",
+                          color: activeRuleIdx === idx ? "var(--accent)" : "var(--text-muted)",
+                          fontSize: 13,
+                          fontWeight: 500,
+                          cursor: "pointer",
+                        }}
                       >
-                        <div className="rule-card-head">
-                          <span className="rule-card-label">
-                            <span className="rule-index">{idx + 1}</span>
-                            Pricing Rule
-                            {isComplete && <span className="rule-configured-badge">configured</span>}
-                            {isDup && <span className="rule-dup-badge">duplicate</span>}
+                        <span>Group {idx + 1}</span>
+                        {rule.productIds.length > 0 && (
+                          <span style={{
+                            background: activeRuleIdx === idx ? "var(--accent)" : "var(--border)",
+                            color: activeRuleIdx === idx ? "#fff" : "var(--text-muted)",
+                            borderRadius: 99,
+                            fontSize: 11,
+                            padding: "1px 7px",
+                            fontWeight: 600,
+                          }}>
+                            {rule.productIds.length}
                           </span>
-                          <button type="button" className="rule-remove" onClick={() => removeRule(idx)}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                          </button>
+                        )}
+                        {rule.increaseAmount > 0 && (
+                          <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>
+                            +₹{rule.increaseAmount}
+                          </span>
+                        )}
+                        <span
+                          onClick={e => { e.stopPropagation(); removeGroup(idx); }}
+                          style={{ marginLeft: 2, opacity: 0.5, lineHeight: 1, cursor: "pointer" }}
+                        >
+                          ×
+                        </span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addGroup}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "6px 12px",
+                        borderRadius: 8,
+                        border: "1.5px dashed var(--border)",
+                        background: "transparent",
+                        color: "var(--text-muted)",
+                        fontSize: 13,
+                        cursor: "pointer",
+                      }}
+                    >
+                      + Add Group
+                    </button>
+                  </div>
+                )}
+
+                {/* No groups yet */}
+                {rules.length === 0 && (
+                  <button type="button" className="add-rule-btn" onClick={addGroup}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add Pricing Group
+                  </button>
+                )}
+
+                {/* Active group editor */}
+                {activeRuleIdx !== null && rules[activeRuleIdx] && (() => {
+                  const rule = rules[activeRuleIdx];
+                  return (
+                    <div className="rule-card is-active" style={{ marginTop: 8 }}>
+                      <div className="rule-card-head">
+                        <span className="rule-card-label">
+                          <span className="rule-index">{activeRuleIdx + 1}</span>
+                          Group {activeRuleIdx + 1}
+                          {rule.productIds.length > 0 && rule.increaseAmount > 0 && (
+                            <span className="rule-configured-badge">
+                              {rule.productIds.length} product{rule.productIds.length !== 1 ? "s" : ""} · +₹{rule.increaseAmount}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="rule-card-body">
+                        {/* Price increase */}
+                        <div className="form-group" style={{ marginBottom: 14 }}>
+                          <label className="form-label" style={{ fontSize: 11 }}>Price increase for this group *</label>
+                          <div className="input-prefix" style={{ maxWidth: 180 }}>
+                            <span className="prefix-symbol">₹</span>
+                            <input
+                              className="form-input"
+                              type="number"
+                              min="0"
+                              step="any"
+                              placeholder="0"
+                              value={rule.increaseAmount || ""}
+                              onChange={e => updateIncrease(activeRuleIdx, parseFloat(e.target.value) || 0)}
+                            />
+                          </div>
                         </div>
 
-                        <div className="rule-card-body">
-                          <div>
-                            <div className="match-label">Match products by</div>
-                            <div className="rule-type-selector">
-                              {(["CATEGORY", "BRAND"] as const).map(type => (
-                                <button
-                                  key={type}
-                                  type="button"
-                                  className={`type-option${rule.ruleType === type ? " active" : ""}`}
-                                  onClick={() => updateRule(idx, { ruleType: type })}
+                        {/* Search + filter bar */}
+                        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                          <div className="search-wrap" style={{ flex: 1 }}>
+                            <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input
+                              className="search-input"
+                              placeholder="Search products…"
+                              value={productSearch}
+                              onChange={e => setProductSearch(e.target.value)}
+                            />
+                          </div>
+                          <select
+                            className="form-select"
+                            style={{ width: 140, fontSize: 12 }}
+                            value={filterCategory}
+                            onChange={e => setFilterCategory(e.target.value)}
+                          >
+                            <option value="">All categories</option>
+                            {categoryOptions.map(([id, name]) => (
+                              <option key={id} value={id}>{name}</option>
+                            ))}
+                          </select>
+                          <select
+                            className="form-select"
+                            style={{ width: 130, fontSize: 12 }}
+                            value={filterBrand}
+                            onChange={e => setFilterBrand(e.target.value)}
+                          >
+                            <option value="">All brands</option>
+                            {brandOptions.map(([id, name]) => (
+                              <option key={id} value={id}>{name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Product list */}
+                        {productsLoading ? (
+                          <div className="ref-list" style={{ pointerEvents: "none", opacity: 0.5 }}>
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <div key={n} className="ref-item">
+                                <div className="skeleton" style={{ width: 14, height: 14, borderRadius: 3, flexShrink: 0 }} />
+                                <div style={{ flex: 1 }}>
+                                  <div className="skeleton" style={{ height: 12, width: `${40 + n * 10}%`, borderRadius: 4, marginBottom: 5 }} />
+                                  <div className="skeleton" style={{ height: 10, width: "40%", borderRadius: 4 }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : filteredProducts.length === 0 ? (
+                          <div className="ref-list">
+                            <div className="ref-empty">No products match your search.</div>
+                          </div>
+                        ) : (
+                          <div className="ref-list" style={{ maxHeight: 280 }}>
+                            {filteredProducts.map(product => {
+                              const isSelected = rule.productIds.includes(product._id);
+                              // Taken by a DIFFERENT group
+                              const takenByOther = !isSelected && allAssigned.has(product._id);
+                              return (
+                                <div
+                                  key={product._id}
+                                  className={`ref-item${isSelected ? " selected" : ""}${takenByOther ? " has-dup" : ""}`}
+                                  onClick={() => !takenByOther && toggleProduct(product._id)}
+                                  style={{
+                                    cursor: takenByOther ? "not-allowed" : "pointer",
+                                    opacity: takenByOther ? 0.45 : 1,
+                                  }}
                                 >
-                                  <div className="type-icon">
-                                    {type === "CATEGORY" ? (
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                        <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-                                        <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-                                      </svg>
-                                    ) : (
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                        <circle cx="12" cy="12" r="10" />
-                                        <path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32" />
+                                  {/* Checkbox */}
+                                  <div style={{
+                                    width: 15,
+                                    height: 15,
+                                    borderRadius: 4,
+                                    border: "1.5px solid",
+                                    borderColor: isSelected ? "var(--accent)" : "var(--border)",
+                                    background: isSelected ? "var(--accent)" : "transparent",
+                                    flexShrink: 0,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}>
+                                    {isSelected && (
+                                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="20 6 9 17 4 12" />
                                       </svg>
                                     )}
                                   </div>
-                                  {type === "CATEGORY" ? "Category" : "Brand"}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
 
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">
-                              Select {label} *{" "}
-                              {refLoading && (
-                                <span style={{ fontWeight: 400, fontStyle: "italic", color: "var(--text-muted)" }}>
-                                  loading…
-                                </span>
-                              )}
-                            </label>
-
-                            {refLoading ? (
-                              <div className="ref-list" style={{ pointerEvents: "none", opacity: 0.5 }}>
-                                {[1, 2, 3].map(n => (
-                                  <div key={n} className="ref-item">
-                                    <div className="skeleton" style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0 }} />
-                                    <div className="skeleton" style={{ height: 12, width: `${50 + n * 15}%`, borderRadius: 4 }} />
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div className="ref-item-name">{product.name}</div>
+                                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                                      {product.brand.name} · {product.category.name} · {product.quantity.value} {product.quantity.unit}
+                                      {takenByOther && (
+                                        <span style={{ color: "#f59e0b", marginLeft: 6 }}>in another group</span>
+                                      )}
+                                    </div>
                                   </div>
-                                ))}
-                              </div>
-                            ) : refList.length === 0 ? (
-                              <div className="ref-list">
-                                <div className="ref-empty">No {label}s found. Add some first.</div>
-                              </div>
-                            ) : (
-                              <div className="ref-list">
-                                {refList.map(item => (
-                                  <div
-                                    key={item._id}
-                                    className={`ref-item${rule.referenceId === item._id ? " selected" : ""}`}
-                                    onClick={() => updateRule(idx, { referenceId: item._id })}
-                                  >
-                                    <div className="ref-dot" />
-                                    <span className="ref-item-name">{item.name}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
 
-                          <div>
-                            <div className="qty-label">When quantity is exactly</div>
-                            <div className="qty-row">
-                              <div className="form-group" style={{ marginBottom: 0, flex: 2 }}>
-                                <label className="form-label" style={{ fontSize: 11 }}>Quantity *</label>
-                                {quantityValues.length === 0 ? (
-                                  <select className="form-select" disabled>
-                                    <option>No quantities found</option>
-                                  </select>
-                                ) : (
-                                  <select
-                                    className="form-select"
-                                    value={rule.quantityValue && rule.quantityUnit ? `${rule.quantityValue}::${rule.quantityUnit}` : ""}
-                                    onChange={e => {
-                                      const [val, unit] = e.target.value.split("::");
-                                      updateRule(idx, {
-                                        quantityValue: parseFloat(val),
-                                        quantityUnit: unit,
-                                      });
-                                    }}
-                                    required
-                                  >
-                                    <option value="" disabled>Select quantity…</option>
-                                    {quantityValues.map(q => (
-                                      <option key={`${q.value}::${q.unit}`} value={`${q.value}::${q.unit}`}>
-                                        {q.value} {q.unit}
-                                      </option>
-                                    ))}
-                                  </select>
-                                )}
-                              </div>
-                              <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
-                                <label className="form-label" style={{ fontSize: 11 }}>Price increase *</label>
-                                <div className="input-prefix">
-                                  <span className="prefix-symbol">₹</span>
-                                  <input
-                                    className="form-input"
-                                    type="number"
-                                    min="0"
-                                    step="any"
-                                    placeholder="0"
-                                    value={rule.increaseAmount || ""}
-                                    onChange={e => updateRule(idx, { increaseAmount: parseFloat(e.target.value) || 0 })}
-                                    required
-                                  />
+                                  {/* Stock pill */}
+                                  <span style={{
+                                    fontSize: 11,
+                                    padding: "2px 8px",
+                                    borderRadius: 99,
+                                    background: product.currentStock > 0 ? "rgba(16,185,129,0.12)" : "rgba(244,63,94,0.1)",
+                                    color: product.currentStock > 0 ? "#10b981" : "#f43f5e",
+                                    flexShrink: 0,
+                                    fontWeight: 500,
+                                  }}>
+                                    {product.currentStock > 0 ? `${product.currentStock} in stock` : "out of stock"}
+                                  </span>
                                 </div>
-                              </div>
-                            </div>
+                              );
+                            })}
                           </div>
+                        )}
 
-                          {isDup ? (
-                            <div className="rule-summary duplicate">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                                <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                              </svg>
-                              <span>
-                                Duplicate rule — another rule already targets the same {label}, quantity, and unit.
-                                Each combination must be unique.
-                              </span>
-                            </div>
-                          ) : summary ? (
-                            <div className="rule-summary complete">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                              <span className="summary-example">{summary}</span>
-                            </div>
-                          ) : (
-                            <div className="rule-summary incomplete">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                              </svg>
-                              <span>Fill in all fields above to preview this rule.</span>
-                            </div>
-                          )}
-                        </div>
+                        {/* Selection summary */}
+                        {rule.productIds.length > 0 && (
+                          <div className="rule-summary complete" style={{ marginTop: 10 }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            <span className="summary-example">
+                              {rule.productIds.length} product{rule.productIds.length !== 1 ? "s" : ""} selected
+                              {rule.increaseAmount > 0 ? ` → +₹${rule.increaseAmount} each` : " — set a price increase above"}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-
-                <button type="button" className="add-rule-btn" onClick={addRule}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  Add Pricing Rule
-                </button>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="modal-footer">

@@ -2,38 +2,13 @@ import mongoose from "mongoose";
 
 const pricingRuleSchema = new mongoose.Schema(
   {
-    ruleType: {
-      type: String,
-      enum: ["CATEGORY", "BRAND"],
-      required: true,
-    },
-
-    referenceId: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-    },
-
-    quantityValue: {
-      type: Number,
-      required: true,
-    },
-
-    quantityUnit: {
-      type: String,
-      enum: [
-        "kg",
-        "g",
-        "mg",
-        "litre",
-        "ml",
-        "tablet",
-        "box",
-        "bottle",
-        "piece",
-      ],
-      required: true,
-    },
-
+    productIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+        required: true,
+      }
+    ],
     increaseAmount: {
       type: Number,
       required: true,
@@ -50,52 +25,38 @@ const catalogueSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
     customerName: {
       type: String,
       required: true,
       trim: true,
     },
-
     customerType: {
       type: String,
       required: true,
       trim: true,
     },
-
     place: {
       type: String,
       trim: true,
     },
-
     pricingRules: [pricingRuleSchema],
-
     status: {
       type: String,
       enum: ["draft", "generated"],
       default: "draft",
     },
-
     generatedPdfUrl: {
       type: String,
     },
-
     generatedAt: {
       type: Date,
     },
-
     isDeleted: {
       type: Boolean,
       default: false,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-export default mongoose.model(
-  "Catalogue",
-  catalogueSchema,
-  "catalogues"
-);
+export default mongoose.model("Catalogue", catalogueSchema, "catalogues");

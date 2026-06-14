@@ -224,7 +224,12 @@ export const deleteStockEntry = async (
   await axiosInstance.delete(`/products/${productId}/stock/${entryId}`);
 };
 
-export const getQuantityValues = async (): Promise<{ value: number; unit: string }[]> => {
-  const response = await axiosInstance.get("/products/get-quantity-values");
+export const getQuantityValuesByRef = async (
+  ruleType: "CATEGORY" | "BRAND",
+  referenceId: string
+): Promise<{ value: number; unit: string }[]> => {
+  const response = await axiosInstance.get("/products/get-quantity-values", {
+    params: { ruleType, referenceId },
+  });
   return response.data;
 };

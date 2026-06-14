@@ -64,9 +64,86 @@ function CoverPage({
   );
 }
 
+// ─── Index Pagination Logic ───────────────────────────────────────────────────
+//
+// Budget: each A4 index page has roughly 820px of usable vertical space.
+// Header + rule ≈ 96px, footer ≈ 48px → body budget ≈ 676px.
+// Category header row ≈ 52px (label + border + gap).
+// Each item row ≈ 33px (padding 6px top+bottom + 13px font + border).
+//
+// We split categories (and their items) into "pages" that stay within budget.
+
+const IDX_BODY_BUDGET = 640; // px available per page for index rows
+const IDX_CAT_HEADER_H = 52; // category label row height
+const IDX_ITEM_H = 33; // each item row height
+
+type IndexSlice = { category: string; items: LineItem[] }[];
+
+function paginateIndex(grouped: Record<string, LineItem[]>): IndexSlice[] {
+  const pages: IndexSlice[] = [];
+  let currentPage: IndexSlice = [];
+  let usedHeight = 0;
+
+  for (const [category, items] of Object.entries(grouped)) {
+    const categoryHeight = IDX_CAT_HEADER_H + items.length * IDX_ITEM_H;
+
+    // If this whole category fits on the current page, add it
+    if (usedHeight + categoryHeight <= IDX_BODY_BUDGET) {
+      currentPage.push({ category, items });
+      usedHeight += categoryHeight;
+    } else {
+      // Try to split: push a partial category onto the current page,
+      // then overflow the rest onto the next page(s).
+      const remainingItems = [...items];
+      let firstSlice = true;
+
+      while (remainingItems.length > 0) {
+        const headerCost = firstSlice ? IDX_CAT_HEADER_H : IDX_CAT_HEADER_H;
+        const spaceLeft = IDX_BODY_BUDGET - usedHeight;
+        const itemsThatFit = Math.floor(
+          (spaceLeft - headerCost) / IDX_ITEM_H
+        );
+
+        if (itemsThatFit > 0 && currentPage.length > 0) {
+          // Partial fit on current page
+          const slice = remainingItems.splice(0, itemsThatFit);
+          currentPage.push({ category, items: slice });
+          pages.push(currentPage);
+          currentPage = [];
+          usedHeight = 0;
+        } else {
+          // Start a fresh page
+          if (currentPage.length > 0) {
+            pages.push(currentPage);
+            currentPage = [];
+            usedHeight = 0;
+          }
+          // How many items fit on a full fresh page?
+          const itemsPerFreshPage = Math.floor(
+            (IDX_BODY_BUDGET - IDX_CAT_HEADER_H) / IDX_ITEM_H
+          );
+          const slice = remainingItems.splice(0, Math.max(itemsPerFreshPage, 1));
+          currentPage.push({ category, items: slice });
+          usedHeight = IDX_CAT_HEADER_H + slice.length * IDX_ITEM_H;
+        }
+        firstSlice = false;
+      }
+    }
+  }
+
+  if (currentPage.length > 0) pages.push(currentPage);
+  return pages;
+}
+
 // ─── Index Page ───────────────────────────────────────────────────────────────
 
-function IndexPage({ grouped }: { grouped: Record<string, LineItem[]> }) {
+function IndexPage({
+  slice,
+  pageNum,
+}: {
+  slice: IndexSlice;
+  pageNum: number;
+}) {
   return (
     <div className="cp-page cp-index">
       <div className="cp-index-header">
@@ -74,8 +151,8 @@ function IndexPage({ grouped }: { grouped: Record<string, LineItem[]> }) {
         <div className="cp-index-brand-mark">AM Dynamic Wellness</div>
       </div>
 
-      <div>
-        {Object.entries(grouped).map(([category, items]) => (
+      <div className="cp-index-body">
+        {slice.map(({ category, items }) => (
           <div key={category} className="cp-index-category">
             <div className="cp-index-cat-name">{category}</div>
             <ul className="cp-index-list">
@@ -98,7 +175,7 @@ function IndexPage({ grouped }: { grouped: Record<string, LineItem[]> }) {
           <img src={amLogo} alt="" />
           <span>AM Dynamic Wellness — Perfect Nutrition</span>
         </div>
-        <span>Page 2</span>
+        <span>Page {pageNum}</span>
       </div>
     </div>
   );
@@ -195,15 +272,32 @@ function CatalogueTemplate({ data }: { data: GenerateResponse }) {
   const generatedDate = new Date(catalogue.generatedAt).toLocaleDateString("en-IN", {
     day: "2-digit", month: "short", year: "numeric",
   });
+
+  // Paginate index entries
+  const indexPages = paginateIndex(grouped);
+
+  // Product pages start after cover (1) + index pages
+  const productStartPage = 1 + indexPages.length + 1; // 1-based
   const allItems: LineItem[] = Object.values(grouped).flat();
-  const pages = chunk(allItems, 2);
+  const productPageChunks = chunk(allItems, 2);
 
   return (
     <div className="cp-root">
-      <CoverPage customerName={catalogue.customerName} place={catalogue.place} generatedDate={generatedDate} />
-      <IndexPage grouped={grouped} />
-      {pages.map((pageItems, i) => (
-        <ProductPage key={i} items={pageItems} pageNum={i + 3} />
+      {/* Page 1: Cover */}
+      <CoverPage
+        customerName={catalogue.customerName}
+        place={catalogue.place}
+        generatedDate={generatedDate}
+      />
+
+      {/* Pages 2…N: Index (one page per slice) */}
+      {indexPages.map((slice, i) => (
+        <IndexPage key={i} slice={slice} pageNum={i + 2} />
+      ))}
+
+      {/* Pages N+1…: Products */}
+      {productPageChunks.map((pageItems, i) => (
+        <ProductPage key={i} items={pageItems} pageNum={productStartPage + i} />
       ))}
     </div>
   );

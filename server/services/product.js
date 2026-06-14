@@ -420,34 +420,31 @@ const enrichProduct = async (product, isShopKeeper) => {
   return base;
 };
 
-const getQuantityValues = async () => {
+const getQuantityValuesByRef = async (ruleType, referenceId) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(referenceId)) {
+      throw new AppError("Invalid reference ID", 400);
+    }
+
+    const matchStage =
+      ruleType === "CATEGORY"
+        ? { category: new mongoose.Types.ObjectId(referenceId) }
+        : { brand: new mongoose.Types.ObjectId(referenceId) };
+
     const quantityValues = await Product.aggregate([
+      { $match: { ...matchStage, isDeleted: false } },
       {
         $group: {
-          _id: {
-            value: "$quantity.value",
-            unit: "$quantity.unit",
-          },
+          _id: { value: "$quantity.value", unit: "$quantity.unit" },
         },
       },
-      {
-        $project: {
-          _id: 0,
-          value: "$_id.value",
-          unit: "$_id.unit",
-        },
-      },
-      {
-        $sort: {
-          unit: 1,
-          value: 1,
-        },
-      },
+      { $project: { _id: 0, value: "$_id.value", unit: "$_id.unit" } },
+      { $sort: { unit: 1, value: 1 } },
     ]);
 
     return quantityValues;
   } catch (err) {
+    if (err instanceof AppError) throw err;
     throw new AppError("Failed to retrieve quantity values", 500);
   }
 };
@@ -463,5 +460,5 @@ export default {
   getStockHistory,
   editStockEntry,
   deleteStockEntry,
-  getQuantityValues,
+  getQuantityValuesByRef,
 };

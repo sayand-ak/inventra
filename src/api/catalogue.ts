@@ -1,10 +1,7 @@
 import axiosInstance from "./axiosInstance";
 
 export interface PricingRule {
-  ruleType: "CATEGORY" | "BRAND";
-  referenceId: string;
-  quantityValue: number;
-  quantityUnit: string;
+  productIds: string[];
   increaseAmount: number;
 }
 
@@ -37,7 +34,7 @@ export interface LineItem {
   category: string;
   flavour: string;
   quantity: { value: number; unit: string };
-  imageUrl: string | null;  
+  imageUrl: string | null;
   basePrice: number;
   baseRetailPrice: number;
   increaseAmount: number;
@@ -53,12 +50,10 @@ export interface GenerateResponse {
     customerType: string;
     place?: string;
     generatedAt: string;
-    pricingRules?: PricingRule[];
   };
   grouped: Record<string, LineItem[]>;
   lineItems: LineItem[];
 }
-
 
 export const addCatalogue = async (catalogueData: CatalogueData) => {
   try {
@@ -81,7 +76,7 @@ export const getCatalogues = async (): Promise<CatalogueResponse[]> => {
 };
 
 export const generateCatalogue = async (catalogueId: string): Promise<GenerateResponse> => {
-  try {    
+  try {
     const response = await axiosInstance.post(`/catalogues/${catalogueId}/generate`);
     return response.data;
   } catch (error) {

@@ -125,9 +125,10 @@ const deleteStockEntry = async (req, res, next) => {
   }
 };
 
-const getQuantityValues = async (req, res, next) => {
+const getQuantityValuesByRef = async (req, res, next) => {
   try {
-    const quantityValues = await productService.getQuantityValues();
+    const { ruleType, referenceId } = req.query;
+    const quantityValues = await productService.getQuantityValuesByRef(ruleType, referenceId);
     res.status(200).json(quantityValues);
   } catch (err) {
     next(err);
@@ -145,5 +146,5 @@ export default {
   getStockHistory,
   editStockEntry,
   deleteStockEntry,
-  getQuantityValues,
+  getQuantityValuesByRef,
 };

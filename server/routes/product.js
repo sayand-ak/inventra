@@ -4,7 +4,7 @@ import upload from "../middlewares/multer.js";
 
 const router = express.Router();
 
-router.get("/get-quantity-values", productController.getQuantityValues);
+router.get("/get-quantity-values", productController.getQuantityValuesByRef);
 
 router
   .route("/")
