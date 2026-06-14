@@ -8,6 +8,8 @@ import {
 } from "../api/catalogue";
 import "../styles/catalogueGenerate.css";
 
+import amLogo from "/logo.png";
+
 const navItems = [
   { label: "Dashboard", path: "/" },
   { label: "Products", path: "/products" },
@@ -15,8 +17,6 @@ const navItems = [
   { label: "Categories", path: "/categories" },
   { label: "Catalogues", path: "/catalogues" },
 ];
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -37,29 +37,18 @@ function CoverPage({
 }) {
   return (
     <div className="cp-page cp-cover">
-      {/* Top accent bar */}
-      <div className="cp-cover-accent" />
-
       <div className="cp-cover-body">
-        {/* Logo area */}
         <div className="cp-logo-box">
-          <div className="cp-logo-placeholder">
-            <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
-              <rect width="38" height="38" rx="8" fill="#1a1a2e" />
-              <text x="19" y="25" textAnchor="middle" fill="#fff" fontSize="14" fontWeight="700" fontFamily="sans-serif">AM</text>
-            </svg>
-            <span className="cp-logo-text">AM Dynamic Wellness</span>
-          </div>
+          <img src={amLogo} alt="AM Dynamic Wellness" className="cp-logo-img" />
         </div>
 
-        {/* Main title block */}
         <div className="cp-title-block">
-          <div className="cp-title-eyebrow">WHOLESALE</div>
+          <div className="cp-title-eyebrow">Wholesale</div>
           <div className="cp-title-main">PRODUCT<br />CATALOGUE</div>
           <div className="cp-title-rule" />
+          <div className="cp-title-sub">Perfect Nutrition</div>
         </div>
 
-        {/* Customer info */}
         <div className="cp-customer-block">
           <div className="cp-customer-label">Prepared for</div>
           <div className="cp-customer-name">{customerName}</div>
@@ -67,10 +56,9 @@ function CoverPage({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="cp-cover-footer">
         <span>Generated: {generatedDate}</span>
-        <span>AM Dynamic Wellness</span>
+        <div className="cp-cover-footer-brand">AM Dynamic Wellness</div>
       </div>
     </div>
   );
@@ -83,17 +71,17 @@ function IndexPage({ grouped }: { grouped: Record<string, LineItem[]> }) {
     <div className="cp-page cp-index">
       <div className="cp-index-header">
         <div className="cp-index-title">INDEX</div>
-        <div className="cp-index-rule" />
+        <div className="cp-index-brand-mark">AM Dynamic Wellness</div>
       </div>
 
-      <div className="cp-index-body">
+      <div>
         {Object.entries(grouped).map(([category, items]) => (
           <div key={category} className="cp-index-category">
-            <div className="cp-index-cat-name">{category.toUpperCase()}</div>
+            <div className="cp-index-cat-name">{category}</div>
             <ul className="cp-index-list">
               {items.map((item) => (
                 <li key={String(item.productId)} className="cp-index-item">
-                  <span className="cp-index-bullet">•</span>
+                  <span className="cp-index-bullet">◆</span>
                   <span>{item.productName}</span>
                   <span className="cp-index-qty">
                     {item.quantity.value} {item.quantity.unit}
@@ -106,7 +94,10 @@ function IndexPage({ grouped }: { grouped: Record<string, LineItem[]> }) {
       </div>
 
       <div className="cp-page-footer">
-        <span>AM Dynamic Wellness</span>
+        <div className="cp-page-footer-logo">
+          <img src={amLogo} alt="" />
+          <span>AM Dynamic Wellness — Perfect Nutrition</span>
+        </div>
         <span>Page 2</span>
       </div>
     </div>
@@ -118,27 +109,21 @@ function IndexPage({ grouped }: { grouped: Record<string, LineItem[]> }) {
 function ProductCard({ item }: { item: LineItem }) {
   return (
     <div className="cp-product-card">
-      {/* Image area */}
       <div className="cp-product-img-wrap">
         {item.imageUrl ? (
-          <img
-            src={item.imageUrl}
-            alt={item.productName}
-            className="cp-product-img"
-          />
+          <img src={item.imageUrl} alt={item.productName} className="cp-product-img" />
         ) : (
           <div className="cp-product-img-placeholder">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5">
+            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.5">
               <rect x="3" y="3" width="18" height="18" rx="2" />
               <circle cx="8.5" cy="8.5" r="1.5" />
               <polyline points="21 15 16 10 5 21" />
             </svg>
-            <span>Product Image</span>
+            <span style={{ color: "#444", fontSize: 11 }}>No Image</span>
           </div>
         )}
       </div>
 
-      {/* Info area */}
       <div className="cp-product-info">
         <div className="cp-product-name">{item.productName}</div>
 
@@ -149,9 +134,7 @@ function ProductCard({ item }: { item: LineItem }) {
           </div>
           <div className="cp-meta-row">
             <span className="cp-meta-label">Quantity</span>
-            <span className="cp-meta-value">
-              {item.quantity.value} {item.quantity.unit}
-            </span>
+            <span className="cp-meta-value">{item.quantity.value} {item.quantity.unit}</span>
           </div>
           {item.flavour && item.flavour !== "none" && (
             <div className="cp-meta-row">
@@ -162,17 +145,17 @@ function ProductCard({ item }: { item: LineItem }) {
         </div>
 
         <div className="cp-product-pricing">
-          <div className="cp-price-row cp-price-retail">
-            <span className="cp-price-label">Retail Price</span>
-            <span className="cp-price-val cp-price-val--retail">
-              {item.baseRetailPrice > 0
-                ? `₹${item.baseRetailPrice.toLocaleString("en-IN")}`
-                : "—"}
-            </span>
-          </div>
-          <div className="cp-price-row cp-price-wholesale">
+          {item.baseRetailPrice > 0 && (
+            <div className="cp-price-row">
+              <span className="cp-price-label">MRP</span>
+              <span className="cp-price-val--retail">
+                ₹{item.baseRetailPrice.toLocaleString("en-IN")}
+              </span>
+            </div>
+          )}
+          <div className="cp-price-wholesale">
             <span className="cp-price-label">Wholesale Price</span>
-            <span className="cp-price-val cp-price-val--wholesale">
+            <span className="cp-price-val--wholesale">
               ₹{item.cataloguePrice.toLocaleString("en-IN")}
             </span>
           </div>
@@ -182,61 +165,43 @@ function ProductCard({ item }: { item: LineItem }) {
   );
 }
 
-// ─── Product Page (2 cards) ───────────────────────────────────────────────────
+// ─── Product Page ─────────────────────────────────────────────────────────────
 
-function ProductPage({
-  items,
-  pageNum,
-}: {
-  items: LineItem[];
-  pageNum: number;
-}) {
+function ProductPage({ items, pageNum }: { items: LineItem[]; pageNum: number }) {
   return (
     <div className="cp-page cp-product-page">
       <div className="cp-product-page-inner">
         {items.map((item) => (
           <ProductCard key={String(item.productId)} item={item} />
         ))}
-        {/* Fill empty slot if only 1 product on last page */}
         {items.length === 1 && <div className="cp-product-card cp-product-card--empty" />}
       </div>
 
       <div className="cp-page-footer">
+        <div className="cp-page-footer-logo">
+          <img src={amLogo} alt="" />
+          <span>AM Dynamic Wellness</span>
+        </div>
         <span>Page {pageNum}</span>
-        <span>AM Dynamic Wellness</span>
       </div>
     </div>
   );
 }
 
-// ─── Full Catalogue Template ──────────────────────────────────────────────────
+// ─── Full Catalogue ───────────────────────────────────────────────────────────
 
 function CatalogueTemplate({ data }: { data: GenerateResponse }) {
   const { catalogue, grouped } = data;
-
   const generatedDate = new Date(catalogue.generatedAt).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
+    day: "2-digit", month: "short", year: "numeric",
   });
-
-  // Flatten all products in category order
   const allItems: LineItem[] = Object.values(grouped).flat();
   const pages = chunk(allItems, 2);
 
   return (
     <div className="cp-root">
-      {/* Page 1 — Cover */}
-      <CoverPage
-        customerName={catalogue.customerName}
-        place={catalogue.place}
-        generatedDate={generatedDate}
-      />
-
-      {/* Page 2 — Index */}
+      <CoverPage customerName={catalogue.customerName} place={catalogue.place} generatedDate={generatedDate} />
       <IndexPage grouped={grouped} />
-
-      {/* Pages 3+ — Products */}
       {pages.map((pageItems, i) => (
         <ProductPage key={i} items={pageItems} pageNum={i + 3} />
       ))}
@@ -244,12 +209,11 @@ function CatalogueTemplate({ data }: { data: GenerateResponse }) {
   );
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+// ─── Page Component ───────────────────────────────────────────────────────────
 
 const GenerateCatalogue = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
   const [data, setData] = useState<GenerateResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -262,15 +226,10 @@ const GenerateCatalogue = () => {
     if (!id) return;
     generateCatalogue(id)
       .then(setData)
-      .catch(() =>
-        setError(
-          "Failed to generate catalogue. Please check that products exist for the configured rules."
-        )
-      )
+      .catch(() => setError("Failed to generate catalogue. Please check that products exist for the configured rules."))
       .finally(() => setLoading(false));
   }, [id]);
 
-  // ── Loading ──
   if (loading) {
     return (
       <div className="cat-root">
@@ -288,7 +247,6 @@ const GenerateCatalogue = () => {
     );
   }
 
-  // ── Error ──
   if (error || !data) {
     return (
       <div className="cat-root">
@@ -297,16 +255,12 @@ const GenerateCatalogue = () => {
           <div className="gc-error-wrap">
             <div className="gc-error-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
             </div>
             <div className="gc-error-title">Generation failed</div>
             <div className="gc-error-sub">{error}</div>
-            <button className="btn-cancel" onClick={() => navigate("/catalogues")}>
-              ← Back to Catalogues
-            </button>
+            <button className="btn-cancel" onClick={() => navigate("/catalogues")}>← Back to Catalogues</button>
           </div>
         </main>
       </div>
@@ -315,21 +269,17 @@ const GenerateCatalogue = () => {
 
   const { catalogue, grouped, lineItems } = data;
 
-  // ── Success ──
   return (
     <>
       <div className="cat-root no-print">
         <Sidebar navItems={activeNavItems} />
         <main className="cat-main">
-
-          {/* Topbar */}
           <div className="cat-topbar">
             <div>
               <p className="cat-eyebrow">
                 <button className="gc-back-btn" onClick={() => navigate("/catalogues")}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <line x1="19" y1="12" x2="5" y2="12" />
-                    <polyline points="12 19 5 12 12 5" />
+                    <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
                   </svg>
                   Catalogues
                 </button>
@@ -348,14 +298,13 @@ const GenerateCatalogue = () => {
             </div>
           </div>
 
-          {/* ── Summary ── */}
           <div className="gc-section">
             <div className="gc-section-label">Summary</div>
             <div className="summary-row" style={{ marginBottom: 0 }}>
               {[
-                { label: "Customer", value: catalogue.customerName, color: "#3b82f6" },
-                { label: "Type", value: catalogue.customerType, color: "#a78bfa" },
-                { label: "Categories", value: Object.keys(grouped).length, color: "#f59e0b" },
+                { label: "Customer", value: catalogue.customerName, color: "#C9A84C" },
+                { label: "Type", value: catalogue.customerType, color: "#A8A8A8" },
+                { label: "Categories", value: Object.keys(grouped).length, color: "#E2C97E" },
                 { label: "Products", value: lineItems.length, color: "#10b981" },
               ].map((p) => (
                 <div className="summary-pill" key={p.label}>
@@ -367,7 +316,6 @@ const GenerateCatalogue = () => {
             </div>
           </div>
 
-          {/* ── Catalogue Preview ── */}
           <div className="gc-section">
             <div className="gc-section-label">Catalogue Preview</div>
             <div className="gc-preview-card">
@@ -385,11 +333,8 @@ const GenerateCatalogue = () => {
             </div>
           </div>
 
-          {/* ── Actions ── */}
           <div className="gc-actions-bar">
-            <button className="btn-cancel" onClick={() => navigate("/catalogues")}>
-              ← Back
-            </button>
+            <button className="btn-cancel" onClick={() => navigate("/catalogues")}>← Back</button>
             <button className="add-btn" onClick={() => window.print()}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
                 <polyline points="6 9 6 2 18 2 18 9" />
@@ -402,7 +347,6 @@ const GenerateCatalogue = () => {
         </main>
       </div>
 
-      {/* Print only */}
       <div className="print-only">
         <CatalogueTemplate data={data} />
       </div>
