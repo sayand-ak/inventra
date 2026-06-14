@@ -6,6 +6,7 @@ import ProtectedRoute from "./routes/ProtectedRoutes";
 import Brands from "./pages/Brands";
 import Categories from "./pages/Category";
 import Catalogues from "./pages/Catelogue";
+import GenerateCatalogue from "./components/GenerateCatalogue";
 
 function App() {
   return (
@@ -58,6 +59,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/catalogues/:id/generate" element={<GenerateCatalogue />} />
 
       </Routes>
     </BrowserRouter>

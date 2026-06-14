@@ -30,6 +30,35 @@ export interface CatalogueResponse {
   updatedAt: string;
 }
 
+export interface LineItem {
+  productId: string;
+  productName: string;
+  brand: string;
+  category: string;
+  flavour: string;
+  quantity: { value: number; unit: string };
+  basePrice: number;
+  baseRetailPrice: number;
+  increaseAmount: number;
+  cataloguePrice: number;
+  currentStock: number;
+}
+
+export interface GenerateResponse {
+  catalogue: {
+    _id: string;
+    catalogueName: string;
+    customerName: string;
+    customerType: string;
+    place?: string;
+    generatedAt: string;
+    pricingRules?: PricingRule[];
+  };
+  grouped: Record<string, LineItem[]>;
+  lineItems: LineItem[];
+}
+
+
 export const addCatalogue = async (catalogueData: CatalogueData) => {
   try {
     const response = await axiosInstance.post("/catalogues", catalogueData);
@@ -46,6 +75,16 @@ export const getCatalogues = async (): Promise<CatalogueResponse[]> => {
     return response.data;
   } catch (error) {
     console.error("Error fetching catalogues:", error);
+    throw error;
+  }
+};
+
+export const generateCatalogue = async (catalogueId: string): Promise<GenerateResponse> => {
+  try {    
+    const response = await axiosInstance.post(`/catalogues/${catalogueId}/generate`);
+    return response.data;
+  } catch (error) {
+    console.error("Error generating catalogue:", error);
     throw error;
   }
 };

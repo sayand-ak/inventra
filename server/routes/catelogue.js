@@ -5,5 +5,6 @@ const router = express.Router();
 
 router.post('/', catalogueController.addCatalogue);
 router.get('/', catalogueController.getAllCatalogues);
+router.post('/:id/generate', catalogueController.generateCatalogue);
 
 export default router;

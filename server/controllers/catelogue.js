@@ -19,7 +19,18 @@ const getAllCatalogues = async (req, res, next) => {
   }
 };
 
+const generateCatalogue = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await catalogueService.generateCatalogue(id);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default { 
   addCatalogue, 
-  getAllCatalogues
+  getAllCatalogues,
+  generateCatalogue
 };
