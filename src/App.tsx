@@ -5,7 +5,7 @@ import Products from "./pages/Products";
 import ProtectedRoute from "./routes/ProtectedRoutes";
 import Brands from "./pages/Brands";
 import Categories from "./pages/Category";
-import Catalogues from "./pages/Catelogue";
+import Catalogues from "./pages/Catalogue";
 import GenerateCatalogue from "./components/GenerateCatalogue";
 
 function App() {
